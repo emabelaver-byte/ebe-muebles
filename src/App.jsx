@@ -265,7 +265,7 @@ const Header = ({ onBack, title, onLogoClick, showCart, cartCount, onCartClick, 
         <img
           src={getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}
           alt="eBe Logo"
-          className="h-8 w-auto opacity-80 group-hover:opacity-100 transition-opacity object-contain"
+          className="h-16 w-auto opacity-80 group-hover:opacity-100 transition-opacity object-contain"
         />
       </div>
     </div>
@@ -685,7 +685,7 @@ const App = () => {
         <body>
           <div class="header">
             <div class="logo-section">
-               <img src="${getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}" alt="EBE Muebles Logo" />
+                <img src="${getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}" alt="EBE Muebles Logo" />
             </div>
             <div class="company-info">
               <p><strong>EBE Muebles</strong></p>
@@ -988,7 +988,7 @@ const App = () => {
                 src={getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}
                 alt="eBe Muebles Logo"
                 onClick={handleAdminLogin}
-                className="w-48 h-auto mb-6 drop-shadow-md cursor-pointer opacity-90 hover:scale-105 transition-transform object-contain"
+                className="w-80 h-auto mb-6 drop-shadow-md cursor-pointer opacity-90 hover:scale-105 transition-transform object-contain"
                 onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_LOGO_SRC }}
               />
             </div>
