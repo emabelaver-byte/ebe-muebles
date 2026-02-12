@@ -265,7 +265,7 @@ const Header = ({ onBack, title, onLogoClick, showCart, cartCount, onCartClick, 
         <img
           src={getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}
           alt="eBe Logo"
-          className="h-16 w-auto opacity-80 group-hover:opacity-100 transition-opacity object-contain"
+          className="h-10 md:h-12 w-auto opacity-80 group-hover:opacity-100 transition-opacity object-contain"
         />
       </div>
     </div>
@@ -685,7 +685,7 @@ const App = () => {
         <body>
           <div class="header">
             <div class="logo-section">
-                <img src="${getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}" alt="EBE Muebles Logo" />
+               <img src="${getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}" alt="EBE Muebles Logo" />
             </div>
             <div class="company-info">
               <p><strong>EBE Muebles</strong></p>
@@ -875,11 +875,14 @@ const App = () => {
                   <input
                     value={adminLogoInput}
                     onChange={(e) => setAdminLogoInput(e.target.value)}
-                    placeholder="Pegar URL del logo aquí..."
+                    placeholder="Pegar URL del logo aquí... (Recomendado: Postimages.org)"
                     className="w-full bg-[#FAFAFA] rounded-lg p-3 text-sm text-[#333] border border-[#E0D8C3] outline-none"
                   />
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-[#999]">O subir archivo:</span>
+                  <p className="text-[10px] text-[#999]">
+                    Tip: Para evitar errores, sube tu imagen a <a href="https://postimages.org/" target="_blank" className="underline hover:text-[#5D4037]">Postimages.org</a> y pega el "Enlace directo" aquí.
+                  </p>
+                  <div className="flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
+                    <span className="text-xs text-[#999]">O subir archivo (Máx 400KB):</span>
                     <input
                       type="file"
                       ref={logoFileInputRef}
@@ -988,7 +991,7 @@ const App = () => {
                 src={getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}
                 alt="eBe Muebles Logo"
                 onClick={handleAdminLogin}
-                className="w-80 h-auto mb-6 drop-shadow-md cursor-pointer opacity-90 hover:scale-105 transition-transform object-contain"
+                className="w-48 h-auto mb-6 drop-shadow-md cursor-pointer opacity-90 hover:scale-105 transition-transform object-contain"
                 onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_LOGO_SRC }}
               />
             </div>
@@ -1309,7 +1312,7 @@ const App = () => {
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-16">
               {galeria.map(img => (
-                <div key={img.id} className="relative group rounded-xl overflow-hidden aspect-square border border-[#E0D8C3]">
+                <div key={img.id} onClick={() => setSelectedImage(img)} className="aspect-square rounded-2xl overflow-hidden cursor-pointer group relative shadow-sm hover:shadow-md transition-all border border-[#E0D8C3]">
                   <img src={getDirectDriveUrl(img.src)} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <span className="text-white font-bold uppercase tracking-widest text-sm border-b border-white pb-1 font-sans">{img.alt}</span>
@@ -1366,7 +1369,7 @@ const App = () => {
         {selectedImage && (
           <div className="fixed inset-0 z-[60] bg-[#333]/90 flex items-center justify-center p-4 animate-fade-in" onClick={() => setSelectedImage(null)}>
             <button className="absolute left-4 p-4 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm z-50 shadow-lg" onClick={prevImage}><ChevronLeft size={32} /></button>
-            <img src={selectedImage.src} className="max-w-full max-h-[85vh] rounded-xl shadow-2xl" onClick={e => e.stopPropagation()} />
+            <img src={getDirectDriveUrl(selectedImage.src)} className="max-w-full max-h-[85vh] rounded-xl shadow-2xl" onClick={e => e.stopPropagation()} />
             <button className="absolute right-4 p-4 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm z-50 shadow-lg" onClick={nextImage}><ChevronRight size={32} /></button>
             <button className="absolute top-4 right-4 text-white hover:text-red-500"><X size={32} /></button>
             <p className="absolute bottom-8 text-white font-bold tracking-widest uppercase bg-black/60 px-6 py-3 rounded-full backdrop-blur-md shadow-lg font-sans">{selectedImage.alt}</p>
