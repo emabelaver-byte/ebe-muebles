@@ -31,9 +31,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+// Usamos un ID fijo o generado si no existe para asegurar la ruta
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'ebe-muebles-v3';
 
-// --- UTILIDAD: CONVERTIDOR DE LINKS DE DRIVE (RESTAURADO) ---
+// --- UTILIDAD: CONVERTIDOR DE LINKS DE DRIVE ---
 const getDirectDriveUrl = (url) => {
   if (!url) return '';
   // Si es data:image (base64 subido desde PC), devolver tal cual
@@ -124,6 +125,7 @@ const TESTIMONIOS = [
   { id: 3, nombre: "Lucas M.", texto: "Muy prolijo el trabajo en hierro y madera. Recomendadisimos.", stars: 5 },
 ];
 
+// --- MADERAS (Editables desde el Panel) ---
 const DEFAULT_MADERAS = [
   { id: 'eucalipto', nombre: 'Eucalipto', tier: 'basica', src: "https://images.unsplash.com/photo-1626071465992-0081e3532f3c?q=80&w=400&auto=format&fit=crop" },
   { id: 'guayubira', nombre: 'Guayubira', tier: 'intermedia', src: "https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?q=80&w=400&auto=format&fit=crop" },
@@ -369,6 +371,7 @@ const App = () => {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
+        // RUTA CORREGIDA: Usando la estructura pública permitida
         const docSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'general'));
         if (docSnap.exists()) {
           if (docSnap.data().logoUrl) {
@@ -417,6 +420,7 @@ const App = () => {
       // Convertir URL de Drive si es necesario antes de guardar
       const processedLogoUrl = getDirectDriveUrl(adminLogoInput) || DEFAULT_LOGO_SRC;
 
+      // RUTA CORREGIDA: Guardando en la ubicación pública permitida
       await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'general'), {
         logoUrl: processedLogoUrl,
         instagramUrl: adminInstagramInput || DEFAULT_INSTAGRAM_URL
@@ -435,8 +439,8 @@ const App = () => {
   const handleLogoFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 1000000) { // Limit 1MB for base64 in Firestore to be safe
-        alert("La imagen es muy pesada. Por favor usa una URL o una imagen menor a 1MB.");
+      if (file.size > 800000) { // Limitado a 800KB para asegurar guardado en Firestore
+        alert("La imagen es muy pesada. Por favor usa una imagen menor a 800KB o una URL.");
         return;
       }
       const reader = new FileReader();
@@ -1301,7 +1305,7 @@ const App = () => {
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-16">
               {galeria.map(img => (
-                <div key={img.id} onClick={() => setSelectedImage(img)} className="aspect-square rounded-2xl overflow-hidden cursor-pointer group relative shadow-sm hover:shadow-md transition-all border border-[#E0D8C3]">
+                <div key={img.id} className="relative group rounded-xl overflow-hidden aspect-square border border-[#E0D8C3]">
                   <img src={getDirectDriveUrl(img.src)} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <span className="text-white font-bold uppercase tracking-widest text-sm border-b border-white pb-1 font-sans">{img.alt}</span>
