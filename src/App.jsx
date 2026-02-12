@@ -17,21 +17,21 @@ import {
 //  1. CONFIGURACIÓN Y DATOS
 // ==============================================================================
 
-// Configuración segura de Firebase
-// Reemplaza esto con tus datos reales si es necesario, o déjalo así si ya configuraste las variables de entorno
-let firebaseConfig;
-try {
-  firebaseConfig = JSON.parse(__firebase_config);
-} catch (e) {
-  // Valores por defecto o para desarrollo local
-  firebaseConfig = { apiKey: "mock", authDomain: "mock", projectId: "mock" };
-}
+const firebaseConfig = {
+  apiKey: "AIzaSyCObM7lu1VN6kvPx9Ifgd4eo4N3bgm-Oak",
+  authDomain: "ebemuebles1.firebaseapp.com",
+  projectId: "ebemuebles1",
+  storageBucket: "ebemuebles1.firebasestorage.app",
+  messagingSenderId: "570132018153",
+  appId: "1:570132018153:web:ef8577e7109df18aadd178",
+  measurementId: "G-4GCBZ6YWM3"
+};
 
+// Inicialización
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'ebe-muebles-v3';
-const apiKey = "";
 
 // --- COLORES Y ESTILOS (IDENTIDAD VISUAL "EBE MUEBLES DARK ROAST") ---
 const THEME = {
@@ -632,7 +632,7 @@ const App = () => {
             .item-desc { font-size: 12px; color: #666; margin-top: 4px; }
             .total-section { text-align: right; margin-top: 20px; border-top: 2px solid #5D4037; padding-top: 20px; }
             .total-label { font-size: 14px; text-transform: uppercase; color: #666; }
-            .total-amount { font-size: 32px; font-weight: 700; color: #5D4037; font-family: 'Montserrat', sans-serif; }
+            .total-amount { font-size: 32px; font-weight: 700; color: #8B5E3C; font-family: 'Montserrat', sans-serif; }
             .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 20px; }
           </style>
         </head>
