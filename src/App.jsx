@@ -416,6 +416,10 @@ const App = () => {
   };
 
   const handleSaveSettings = async () => {
+    if (!auth.currentUser) {
+      alert("Debes iniciar sesión como administrador para guardar.");
+      return;
+    }
     try {
       // Convertir URL de Drive si es necesario antes de guardar
       const processedLogoUrl = getDirectDriveUrl(adminLogoInput) || DEFAULT_LOGO_SRC;
@@ -432,15 +436,15 @@ const App = () => {
       alert("Configuración actualizada con éxito.");
     } catch (e) {
       console.error(e);
-      alert("Error al guardar configuración: " + e.message);
+      alert("Error al guardar configuración: " + e.message + "\n\nAsegúrate de que tus reglas de Firestore permitan escritura.");
     }
   };
 
   const handleLogoFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 800000) { // Limitado a 800KB para asegurar guardado en Firestore
-        alert("La imagen es muy pesada. Por favor usa una imagen menor a 800KB o una URL.");
+      if (file.size > 400000) { // Limitado a 400KB para asegurar guardado en Firestore
+        alert("La imagen es muy pesada. Por favor usa una imagen menor a 400KB o una URL.");
         return;
       }
       const reader = new FileReader();
