@@ -10,7 +10,7 @@ import {
   Armchair, Sun, CloudRain, Hammer, Monitor, Tv, Bed, Utensils, Archive,
   RectangleVertical, Box, LogOut, Save, Coins, ImagePlus, Lock, MapPin,
   User, Paperclip, X, Check, Table, DoorOpen, ArrowLeft, Truck, Store, Map, Users,
-  Square, Circle, Triangle, Info, Star, Edit3, FileText, Download, MessageCircle
+  Square, Circle, Triangle, Info, Star, Edit3, FileText, Download, MessageCircle, Instagram, Upload
 } from 'lucide-react';
 
 // ==============================================================================
@@ -18,15 +18,12 @@ import {
 // ==============================================================================
 
 // Configuración segura de Firebase
-const firebaseConfig = {
-  apiKey: "AIzaSyCObM7lu1VN6kvPx9Ifgd4eo4N3bgm-Oak",
-  authDomain: "ebemuebles1.firebaseapp.com",
-  projectId: "ebemuebles1",
-  storageBucket: "ebemuebles1.firebasestorage.app",
-  messagingSenderId: "570132018153",
-  appId: "1:570132018153:web:ef8577e7109df18aadd178",
-  measurementId: "G-4GCBZ6YWM3"
-};
+let firebaseConfig;
+try {
+  firebaseConfig = JSON.parse(__firebase_config);
+} catch (e) {
+  firebaseConfig = { apiKey: "mock", authDomain: "mock", projectId: "mock" };
+}
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -52,8 +49,9 @@ const THEME = {
   input: "bg-white border border-[#D6C4B0] focus:border-[#5D4037] outline-none transition-all font-sans text-[#2C241F] placeholder-[#999]"
 };
 
-// LOGO DEL NEGOCIO
-const LOGO_SRC = "https://cdn-icons-png.flaticon.com/512/3030/3030336.png";
+// LOGO POR DEFECTO (Si no hay uno configurado)
+const DEFAULT_LOGO_SRC = "https://cdn-icons-png.flaticon.com/512/3030/3030336.png";
+const INSTAGRAM_URL = "https://instagram.com/ebe.muebles";
 
 // EMAILS AUTORIZADOS
 const ADMIN_EMAILS = [
@@ -231,7 +229,7 @@ const BackgroundAmbience = () => (
   </div>
 );
 
-const Header = ({ onBack, title, onLogoClick, showCart, cartCount, onCartClick }) => (
+const Header = ({ onBack, title, onLogoClick, showCart, cartCount, onCartClick, logoUrl }) => (
   <header className="sticky top-0 z-20 backdrop-blur-md bg-[#E8DCCA]/90 border-b border-[#D6C4B0] py-4 px-4 flex justify-between items-center transition-all">
     <div className="flex items-center gap-3">
       {onBack && (
@@ -250,9 +248,9 @@ const Header = ({ onBack, title, onLogoClick, showCart, cartCount, onCartClick }
       )}
       <div onClick={onLogoClick} className="cursor-pointer flex items-center gap-2 group">
         <img
-          src={LOGO_SRC}
+          src={logoUrl || LOGO_SRC}
           alt="eBe Logo"
-          className="h-8 w-auto opacity-80 group-hover:opacity-100 transition-opacity"
+          className="h-8 w-auto opacity-80 group-hover:opacity-100 transition-opacity object-contain"
         />
       </div>
     </div>
@@ -288,12 +286,14 @@ const App = () => {
   const [costos, setCostos] = useState(DEFAULT_COSTOS);
   const [galeria, setGaleria] = useState(DEFAULT_GALERIA);
   const [maderas, setMaderas] = useState(DEFAULT_MADERAS);
+  const [logoUrl, setLogoUrl] = useState(DEFAULT_LOGO_SRC);
 
   const [orders, setOrders] = useState([]);
   const [carrito, setCarrito] = useState([]);
 
   // Admin Galeria/Materiales State
   const [newImage, setNewImage] = useState({ url: '', alt: '' });
+  const [adminLogoInput, setAdminLogoInput] = useState('');
 
   // Selección
   const [catSeleccionada, setCatSeleccionada] = useState(null);
@@ -323,6 +323,7 @@ const App = () => {
 
   const isMDF = config.tipoConstruccion === 'placa';
   const fileInputRef = useRef(null);
+  const logoFileInputRef = useRef(null);
 
   // LOGICA TITULO DINAMICO
   const getHeaderTitle = () => {
@@ -347,6 +348,22 @@ const App = () => {
     initAuth();
   }, []);
 
+  // Cargar Configuracion (Logo)
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, 'settings', 'general'));
+        if (docSnap.exists() && docSnap.data().logoUrl) {
+          setLogoUrl(docSnap.data().logoUrl);
+          setAdminLogoInput(docSnap.data().logoUrl);
+        }
+      } catch (error) {
+        console.log("No custom settings found, using default");
+      }
+    };
+    fetchSettings();
+  }, []);
+
   const handleAdminLogin = async () => {
     const provider = new GoogleAuthProvider();
     try {
@@ -360,6 +377,32 @@ const App = () => {
       }
     } catch (error) {
       console.error("Error al iniciar sesión:", error);
+    }
+  };
+
+  const handleSaveLogo = async () => {
+    if (!adminLogoInput) return;
+    try {
+      await setDoc(doc(db, 'settings', 'general'), { logoUrl: adminLogoInput }, { merge: true });
+      setLogoUrl(adminLogoInput);
+      alert("Logo actualizado con éxito.");
+    } catch (e) {
+      alert("Error al guardar logo.");
+    }
+  };
+
+  const handleLogoFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 1000000) { // Limit 1MB for base64 in Firestore to be safe
+        alert("La imagen es muy pesada. Por favor usa una URL o una imagen menor a 1MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAdminLogoInput(reader.result);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -553,7 +596,7 @@ const App = () => {
             @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Inter:wght@300;400;600&display=swap');
             body { font-family: 'Inter', sans-serif; padding: 40px; color: #2C241F; background: #fff; }
             .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #5D4037; padding-bottom: 20px; margin-bottom: 30px; }
-            .logo-section img { height: 60px; }
+            .logo-section img { height: 60px; object-fit: contain; }
             .company-info { text-align: right; font-size: 12px; color: #666; }
             h1 { font-family: 'Montserrat', sans-serif; color: #5D4037; margin: 0; font-size: 28px; text-transform: uppercase; letter-spacing: 2px; }
             .client-info { background: #E8DCCA; padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #D6C4B0; }
@@ -572,7 +615,7 @@ const App = () => {
         <body>
           <div class="header">
             <div class="logo-section">
-               <img src="${LOGO_SRC}" alt="EBE Muebles Logo" />
+               <img src="${logoUrl}" alt="EBE Muebles Logo" />
             </div>
             <div class="company-info">
               <p><strong>EBE Muebles</strong></p>
@@ -679,9 +722,9 @@ const App = () => {
       </div>
 
       <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
-        {['orders', 'prices', 'materiales', 'gallery'].map(tab => (
+        {['orders', 'prices', 'materiales', 'gallery', 'config'].map(tab => (
           <button key={tab} onClick={() => setAdminTab(tab)} className={`px-6 py-3 rounded-full font-bold uppercase tracking-wider text-xs transition-all ${adminTab === tab ? `${THEME.primary} text-white shadow-lg` : 'bg-white border border-[#E0D8C3] text-[#666]'}`}>
-            {tab === 'orders' ? 'Pedidos' : tab === 'prices' ? 'Precios' : tab === 'materiales' ? 'Materiales' : 'Galería'}
+            {tab === 'config' ? 'Configuración' : tab === 'orders' ? 'Pedidos' : tab === 'prices' ? 'Precios' : tab === 'materiales' ? 'Materiales' : 'Galería'}
           </button>
         ))}
       </div>
@@ -758,6 +801,49 @@ const App = () => {
           </div>
         </div>
       )}
+
+      {adminTab === 'config' && (
+        <div className="space-y-6 pb-20">
+          <div className={`bg-white p-6 rounded-xl space-y-6 border border-[#E0D8C3]`}>
+            <h3 className={`${THEME.accent} font-bold uppercase text-sm`}>Configuración General</h3>
+
+            <div className="space-y-4">
+              <label className="block text-sm font-bold text-[#333]">Logo Principal</label>
+              <div className="flex items-center gap-6">
+                <div className="w-24 h-24 border border-[#E0D8C3] rounded-lg flex items-center justify-center bg-[#FAFAFA]">
+                  <img src={adminLogoInput || DEFAULT_LOGO_SRC} alt="Logo Preview" className="max-w-full max-h-full object-contain" />
+                </div>
+                <div className="flex-1 space-y-3">
+                  <input
+                    value={adminLogoInput}
+                    onChange={(e) => setAdminLogoInput(e.target.value)}
+                    placeholder="Pegar URL del logo aquí..."
+                    className="w-full bg-[#FAFAFA] rounded-lg p-3 text-sm text-[#333] border border-[#E0D8C3] outline-none"
+                  />
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[#999]">O subir archivo:</span>
+                    <input
+                      type="file"
+                      ref={logoFileInputRef}
+                      onChange={handleLogoFileUpload}
+                      className="hidden"
+                      accept="image/*"
+                    />
+                    <button
+                      onClick={() => logoFileInputRef.current.click()}
+                      className={`px-4 py-2 bg-[#FAFAFA] border border-[#E0D8C3] text-[#555] rounded-lg text-xs font-bold uppercase flex items-center gap-2 hover:bg-[#E8DCCA]`}
+                    >
+                      <Upload size={14} /> Seleccionar Imagen
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <button onClick={handleSaveLogo} className={`w-full py-3 rounded-lg ${THEME.primary} text-white font-bold uppercase text-sm mt-4 shadow-md`}>Guardar Cambios</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {adminTab === 'orders' && <div className="text-[#999] text-center mt-20">No hay pedidos nuevos.</div>}
 
       {/* Global Save Button Admin */}
@@ -825,17 +911,17 @@ const App = () => {
       {/* APP CONTAINER */}
       <div className={`min-h-screen font-sans ${THEME.textMain} pb-10 selection:bg-[#E0D8C3] selection:text-[#333]`}>
 
-        {paso > 0 && <Header onBack={() => setPaso(paso === 5 ? 0 : paso === 3 ? (catSeleccionada?.destino === 'directo' ? 1 : 2) : (paso === 6 ? 0 : paso - 1))} title={getHeaderTitle()} onLogoClick={handleAdminLogin} showCart={false} cartCount={carrito.length} onCartClick={() => setPaso(4)} />}
+        {paso > 0 && <Header onBack={() => setPaso(paso === 5 ? 0 : paso === 3 ? (catSeleccionada?.destino === 'directo' ? 1 : 2) : (paso === 6 ? 0 : paso - 1))} title={getHeaderTitle()} onLogoClick={handleAdminLogin} showCart={false} cartCount={carrito.length} onCartClick={() => setPaso(4)} logoUrl={logoUrl} />}
 
         {/* HOME */}
         {paso === 0 && (
           <div className="min-h-screen flex flex-col items-center justify-center p-6 relative">
             <div className="mb-12 text-center relative z-10 animate-float flex flex-col items-center">
               <img
-                src={LOGO_SRC}
+                src={logoUrl || LOGO_SRC}
                 alt="eBe Muebles Logo"
                 onClick={handleAdminLogin}
-                className="w-48 h-auto mb-6 drop-shadow-md cursor-pointer opacity-90 hover:scale-105 transition-transform"
+                className="w-48 h-auto mb-6 drop-shadow-md cursor-pointer opacity-90 hover:scale-105 transition-transform object-contain"
               />
               <p className={`uppercase tracking-[0.3em] text-xs font-bold ${THEME.accent} mt-4`}>Carpintería de Autor</p>
             </div>
@@ -1123,7 +1209,7 @@ const App = () => {
                   <span className={`text-3xl md:text-4xl font-bold ${THEME.textMain} tracking-tight font-sans`}>${new Intl.NumberFormat('es-AR').format(carrito.reduce((a, b) => a + b.precio, 0))}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-4 w-full">
-                  <button onClick={generarPresupuestoPDF} className={`w-full py-4 rounded-xl font-bold uppercase text-[#8B5E3C] border border-[#8B5E3C] hover:bg-[#8B5E3C] hover:text-white transition-all flex items-center justify-center gap-2 text-xs md:text-sm`}>
+                  <button onClick={generarPresupuestoPDF} className={`w-full py-4 rounded-xl font-bold uppercase text-[#5D4037] border border-[#5D4037] hover:bg-[#5D4037] hover:text-white transition-all flex items-center justify-center gap-2 text-xs md:text-sm`}>
                     <FileText size={20} /> Descargar PDF
                   </button>
                   <button onClick={enviarWhatsapp} disabled={!cliente.nombre} className={`w-full py-4 rounded-xl font-bold uppercase text-white shadow-lg flex items-center justify-center gap-2 transition-all ${cliente.nombre ? `${THEME.primary} hover:${THEME.primaryHover} shadow-[#5D4037]/30` : 'bg-[#E0D8C3] cursor-not-allowed text-[#999]'} text-xs md:text-sm`}>
@@ -1145,7 +1231,7 @@ const App = () => {
                 onClick={() => setShowReviews(true)}
                 className={`px-4 py-2 bg-white border border-[#8B5E3C] text-[#8B5E3C] rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-[#8B5E3C] hover:text-white transition-all shadow-sm flex items-center gap-2`}
               >
-                <MessageCircle size={16} /> Reseñas
+                <MessageCircle size={16} /> RESEÑAS
               </button>
             </div>
 
@@ -1178,7 +1264,16 @@ const App = () => {
               <p className={`italic ${THEME.textMuted} text-center mt-4 border-t border-[#E0D8C3] pt-4`}>"Nuestro propósito es transformar ideas en piezas reales, creando muebles que acompañen la vida diaria y perduren en el tiempo."</p>
             </div>
 
-            <button onClick={() => setPaso(5)} className={`mt-12 px-10 py-4 rounded-xl border border-[#8B5E3C] ${THEME.accent} text-sm font-bold uppercase hover:bg-[#8B5E3C] hover:text-white transition-colors flex items-center gap-2 mx-auto`}>Ver Galería de Trabajos <ChevronRight size={16} /></button>
+            <div className="mt-12 flex justify-center">
+              <a
+                href={INSTAGRAM_URL}
+                target="_blank"
+                rel="noreferrer"
+                className={`px-10 py-4 rounded-xl border border-[#C13584] text-[#C13584] text-sm font-bold uppercase hover:bg-[#C13584] hover:text-white transition-colors flex items-center gap-2 shadow-sm`}
+              >
+                <Instagram size={20} /> Seguinos en Instagram
+              </a>
+            </div>
           </div>
         )}
 
