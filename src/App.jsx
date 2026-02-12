@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import {
-  getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, query, orderBy
+  getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot
 } from 'firebase/firestore';
 import {
   Ruler, TreePine, Palette, Send, ShoppingCart, Plus, Trash2, Settings,
-  ChevronRight, ChevronLeft, Image as ImageIcon, Sparkles, MessageSquare, BoxSelect,
-  Armchair, Sun, CloudRain, Hammer, Monitor, Tv, Bed, Utensils, Archive,
-  RectangleVertical, Box, LogOut, Save, Coins, ImagePlus, Lock, MapPin,
+  ChevronRight, ChevronLeft, Image as ImageIcon, Sparkles, BoxSelect,
+  Sun, CloudRain, Hammer, Monitor, Tv, Bed, Utensils, Archive,
+  RectangleVertical, Box, LogOut, Save, MapPin,
   User, Paperclip, X, Check, Table, DoorOpen, ArrowLeft, Truck, Store, Map, Users,
-  Square, Circle, Triangle, Info, Star, Edit3, FileText, Download, MessageCircle, Instagram, Upload
+  Square, Triangle, Star, FileText, MessageCircle, Instagram, Upload
 } from 'lucide-react';
 
 // ==============================================================================
@@ -18,18 +18,18 @@ import {
 // ==============================================================================
 
 // Configuración segura de Firebase
+// Reemplaza esto con tus datos reales si es necesario, o déjalo así si ya configuraste las variables de entorno
 let firebaseConfig;
 try {
   firebaseConfig = JSON.parse(__firebase_config);
 } catch (e) {
+  // Valores por defecto o para desarrollo local
   firebaseConfig = { apiKey: "mock", authDomain: "mock", projectId: "mock" };
 }
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'ebe-muebles-v3';
-const apiKey = "";
 
 // --- COLORES Y ESTILOS (IDENTIDAD VISUAL "EBE MUEBLES DARK ROAST") ---
 const THEME = {
@@ -49,9 +49,9 @@ const THEME = {
   input: "bg-white border border-[#D6C4B0] focus:border-[#5D4037] outline-none transition-all font-sans text-[#2C241F] placeholder-[#999]"
 };
 
-// LOGO POR DEFECTO (Si no hay uno configurado)
+// VALORES POR DEFECTO
 const DEFAULT_LOGO_SRC = "https://cdn-icons-png.flaticon.com/512/3030/3030336.png";
-const INSTAGRAM_URL = "https://instagram.com/ebe.muebles";
+const DEFAULT_INSTAGRAM_URL = "https://instagram.com/ebe.muebles";
 
 // EMAILS AUTORIZADOS
 const ADMIN_EMAILS = [
@@ -287,6 +287,7 @@ const App = () => {
   const [galeria, setGaleria] = useState(DEFAULT_GALERIA);
   const [maderas, setMaderas] = useState(DEFAULT_MADERAS);
   const [logoUrl, setLogoUrl] = useState(DEFAULT_LOGO_SRC);
+  const [instagramUrl, setInstagramUrl] = useState(DEFAULT_INSTAGRAM_URL);
 
   const [orders, setOrders] = useState([]);
   const [carrito, setCarrito] = useState([]);
@@ -294,6 +295,7 @@ const App = () => {
   // Admin Galeria/Materiales State
   const [newImage, setNewImage] = useState({ url: '', alt: '' });
   const [adminLogoInput, setAdminLogoInput] = useState('');
+  const [adminInstagramInput, setAdminInstagramInput] = useState('');
 
   // Selección
   const [catSeleccionada, setCatSeleccionada] = useState(null);
@@ -348,14 +350,22 @@ const App = () => {
     initAuth();
   }, []);
 
-  // Cargar Configuracion (Logo)
+  // Cargar Configuracion (Logo & Instagram)
   useEffect(() => {
     const fetchSettings = async () => {
       try {
         const docSnap = await getDoc(doc(db, 'settings', 'general'));
-        if (docSnap.exists() && docSnap.data().logoUrl) {
-          setLogoUrl(docSnap.data().logoUrl);
-          setAdminLogoInput(docSnap.data().logoUrl);
+        if (docSnap.exists()) {
+          if (docSnap.data().logoUrl) {
+            setLogoUrl(docSnap.data().logoUrl);
+            setAdminLogoInput(docSnap.data().logoUrl);
+          }
+          if (docSnap.data().instagramUrl) {
+            setInstagramUrl(docSnap.data().instagramUrl);
+            setAdminInstagramInput(docSnap.data().instagramUrl);
+          } else {
+            setAdminInstagramInput(DEFAULT_INSTAGRAM_URL);
+          }
         }
       } catch (error) {
         console.log("No custom settings found, using default");
@@ -380,14 +390,19 @@ const App = () => {
     }
   };
 
-  const handleSaveLogo = async () => {
-    if (!adminLogoInput) return;
+  const handleSaveSettings = async () => {
     try {
-      await setDoc(doc(db, 'settings', 'general'), { logoUrl: adminLogoInput }, { merge: true });
-      setLogoUrl(adminLogoInput);
-      alert("Logo actualizado con éxito.");
+      await setDoc(doc(db, 'settings', 'general'), {
+        logoUrl: adminLogoInput || DEFAULT_LOGO_SRC,
+        instagramUrl: adminInstagramInput || DEFAULT_INSTAGRAM_URL
+      }, { merge: true });
+
+      if (adminLogoInput) setLogoUrl(adminLogoInput);
+      if (adminInstagramInput) setInstagramUrl(adminInstagramInput);
+
+      alert("Configuración actualizada con éxito.");
     } catch (e) {
-      alert("Error al guardar logo.");
+      alert("Error al guardar configuración.");
     }
   };
 
@@ -838,7 +853,16 @@ const App = () => {
                   </div>
                 </div>
               </div>
-              <button onClick={handleSaveLogo} className={`w-full py-3 rounded-lg ${THEME.primary} text-white font-bold uppercase text-sm mt-4 shadow-md`}>Guardar Cambios</button>
+
+              <label className="block text-sm font-bold text-[#333] mt-6">Enlace de Instagram</label>
+              <input
+                value={adminInstagramInput}
+                onChange={(e) => setAdminInstagramInput(e.target.value)}
+                placeholder="https://instagram.com/..."
+                className="w-full bg-[#FAFAFA] rounded-lg p-3 text-sm text-[#333] border border-[#E0D8C3] outline-none"
+              />
+
+              <button onClick={handleSaveSettings} className={`w-full py-3 rounded-lg ${THEME.primary} text-white font-bold uppercase text-sm mt-6 shadow-md`}>Guardar Configuración</button>
             </div>
           </div>
         </div>
@@ -898,7 +922,7 @@ const App = () => {
                 <div key={t.id} className="bg-[#FAFAFA] p-4 rounded-xl border border-[#E0D8C3]">
                   <div className="flex justify-between items-center mb-2">
                     <span className={`font-bold text-sm ${THEME.textMain}`}>{t.nombre}</span>
-                    <div className="flex gap-0.5 text-[#C17A4A]">{[...Array(t.stars)].map((_, i) => <Star key={i} size={12} fill="currentColor" />)}</div>
+                    <div className="flex gap-0.5 text-[#5D4037]">{[...Array(t.stars)].map((_, i) => <Star key={i} size={12} fill="currentColor" />)}</div>
                   </div>
                   <p className={`text-xs ${THEME.textMuted} italic leading-relaxed`}>"{t.texto}"</p>
                 </div>
@@ -923,7 +947,6 @@ const App = () => {
                 onClick={handleAdminLogin}
                 className="w-48 h-auto mb-6 drop-shadow-md cursor-pointer opacity-90 hover:scale-105 transition-transform object-contain"
               />
-              <p className={`uppercase tracking-[0.3em] text-xs font-bold ${THEME.accent} mt-4`}>Carpintería de Autor</p>
             </div>
             <div className="w-full max-w-xs md:max-w-sm space-y-4 z-10">
               <button onClick={() => setPaso(1)} className={`w-full py-6 rounded-2xl font-bold text-lg tracking-widest uppercase transition-all transform hover:scale-[1.02] shadow-xl shadow-[#5D4037]/30 ${THEME.primary} text-white border border-[#5D4037]`}>Hacé tu Presupuesto</button>
@@ -937,9 +960,14 @@ const App = () => {
                   <span className={`text-xs md:text-lg font-bold uppercase ${THEME.textMain} tracking-widest`}>Nosotros</span>
                 </button>
               </div>
-              <button onClick={() => setShowAi(true)} className={`w-full py-4 rounded-xl border border-[#5D4037] flex items-center justify-center gap-2 hover:bg-[#5D4037]/5 transition-all text-[#5D4037]`}>
-                <Sparkles size={18} /> <span className="text-xs font-bold uppercase tracking-wide">Asistente IA</span>
-              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => setShowAi(true)} className={`w-full py-4 rounded-xl border-2 border-[#5D4037] flex flex-col md:flex-row items-center justify-center gap-2 hover:bg-[#5D4037]/5 transition-all text-[#5D4037]`}>
+                  <Sparkles size={20} /> <span className="text-xs font-bold uppercase tracking-wide">Asistente</span>
+                </button>
+                <a href={instagramUrl || DEFAULT_INSTAGRAM_URL} target="_blank" rel="noreferrer" className={`w-full py-4 rounded-xl border-2 border-[#5D4037] flex flex-col md:flex-row items-center justify-center gap-2 hover:bg-[#5D4037]/5 transition-all text-[#5D4037]`}>
+                  <Instagram size={20} /> <span className="text-xs font-bold uppercase tracking-wide">Instagram</span>
+                </a>
+              </div>
             </div>
           </div>
         )}
@@ -1245,6 +1273,17 @@ const App = () => {
                 </div>
               ))}
             </div>
+
+            <div className="mt-8 flex justify-center">
+              <a
+                href={instagramUrl || DEFAULT_INSTAGRAM_URL}
+                target="_blank"
+                rel="noreferrer"
+                className={`px-6 py-3 rounded-xl border border-[#C13584] text-[#C13584] text-xs font-bold uppercase hover:bg-[#C13584] hover:text-white transition-colors flex items-center gap-2 shadow-sm`}
+              >
+                <Instagram size={18} /> Seguinos en Instagram
+              </a>
+            </div>
           </div>
         )}
 
@@ -1256,6 +1295,8 @@ const App = () => {
             </div>
             <h2 className={`text-4xl font-bold uppercase tracking-widest ${THEME.textMain} mb-8 font-sans`}>Sobre Nosotros</h2>
 
+            <p className={`uppercase tracking-[0.3em] text-xs font-bold ${THEME.accent} mb-6`}>Carpintería de Autor</p>
+
             <div className="bg-white/80 backdrop-blur-md p-8 rounded-2xl border border-[#E0D8C3] shadow-sm space-y-6 text-[#555] text-lg leading-relaxed font-light text-left">
               <p><strong className={THEME.textMain}>En EBE Muebles</strong> somos un equipo dedicado al diseño y fabricación de muebles a medida de alta calidad, combinando funcionalidad, estética y durabilidad en cada proyecto. Nacemos con una visión clara: crear piezas únicas que respondan a las necesidades reales de cada cliente, respetando los espacios, los estilos y el uso cotidiano.</p>
               <p>Nos especializamos en el desarrollo de muebles de madera maciza, hierro y combinaciones contemporáneas, trabajando con <span className={`${THEME.accent} font-medium`}>maderas reforestadas</span> provenientes de tala cuidada, seleccionadas por su resistencia, estabilidad y comportamiento a largo plazo.</p>
@@ -1266,7 +1307,7 @@ const App = () => {
 
             <div className="mt-12 flex justify-center">
               <a
-                href={INSTAGRAM_URL}
+                href={instagramUrl || DEFAULT_INSTAGRAM_URL}
                 target="_blank"
                 rel="noreferrer"
                 className={`px-10 py-4 rounded-xl border border-[#C13584] text-[#C13584] text-sm font-bold uppercase hover:bg-[#C13584] hover:text-white transition-colors flex items-center gap-2 shadow-sm`}
@@ -1299,7 +1340,7 @@ const App = () => {
                   <div key={t.id} className="bg-[#FAFAFA] p-4 rounded-xl border border-[#E0D8C3]">
                     <div className="flex justify-between items-center mb-2">
                       <span className={`font-bold text-sm ${THEME.textMain}`}>{t.nombre}</span>
-                      <div className="flex gap-0.5 text-[#C17A4A]">{[...Array(t.stars)].map((_, i) => <Star key={i} size={12} fill="currentColor" />)}</div>
+                      <div className="flex gap-0.5 text-[#5D4037]">{[...Array(t.stars)].map((_, i) => <Star key={i} size={12} fill="currentColor" />)}</div>
                     </div>
                     <p className={`text-xs ${THEME.textMuted} italic leading-relaxed`}>"{t.texto}"</p>
                   </div>
