@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import {
-  getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot
+  getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, query, orderBy
 } from 'firebase/firestore';
 import {
   Ruler, TreePine, Palette, Send, ShoppingCart, Plus, Trash2, Settings,
-  ChevronRight, ChevronLeft, Image as ImageIcon, Sparkles, BoxSelect,
-  Sun, CloudRain, Hammer, Monitor, Tv, Bed, Utensils, Archive,
-  RectangleVertical, Box, LogOut, Save, MapPin,
+  ChevronRight, ChevronLeft, Image as ImageIcon, Sparkles, MessageSquare, BoxSelect,
+  Armchair, Sun, CloudRain, Hammer, Monitor, Tv, Bed, Utensils, Archive,
+  RectangleVertical, Box, LogOut, Save, Coins, ImagePlus, Lock, MapPin,
   User, Paperclip, X, Check, Table, DoorOpen, ArrowLeft, Truck, Store, Map, Users,
-  Square, Triangle, Star, FileText, MessageCircle, Instagram, Upload
+  Square, Circle, Triangle, Info, Star, Edit3, FileText, Download, MessageCircle, Instagram, Upload
 } from 'lucide-react';
 
 // ==============================================================================
@@ -30,6 +30,8 @@ try {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'ebe-muebles-v3';
+const apiKey = "";
 
 // --- COLORES Y ESTILOS (IDENTIDAD VISUAL "EBE MUEBLES DARK ROAST") ---
 const THEME = {
