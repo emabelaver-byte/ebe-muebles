@@ -262,6 +262,8 @@ const Header = ({ onBack, title, onLogoClick, showCart, cartCount, onCartClick, 
 const IconRenderer = ({ name, size = 24, className }) => {
   const icons = { Table, DoorOpen, Armchair, RectangleVertical, Box, Monitor, Utensils, Archive, Bed, Tv };
   const IconComponent = icons[name] || Box;
+  // Safety check
+  if (!IconComponent) return null;
   return <IconComponent size={size} className={className} />;
 };
 
@@ -389,6 +391,11 @@ const App = () => {
       }
     } catch (error) {
       console.error("Error al iniciar sesión:", error);
+      if (error.code === 'auth/unauthorized-domain') {
+        alert("Dominio no autorizado. \n\nPor favor, ve a Firebase Console -> Authentication -> Settings -> Authorized Domains y agrega este dominio.");
+      } else {
+        alert("Error al iniciar sesión con Google: " + error.message);
+      }
     }
   };
 
