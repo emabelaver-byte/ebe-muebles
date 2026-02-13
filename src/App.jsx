@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import {
-  getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, query, orderBy
+  getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, query, orderBy, limit, getDocs
 } from 'firebase/firestore';
 import {
   Ruler, TreePine, Palette, Send, ShoppingCart, Plus, Trash2, Settings,
@@ -10,7 +10,8 @@ import {
   Armchair, Sun, CloudRain, Hammer, Monitor, Tv, Bed, Utensils, Archive,
   RectangleVertical, Box, LogOut, Save, Coins, ImagePlus, Lock, MapPin,
   User, Paperclip, X, Check, Table, DoorOpen, ArrowLeft, Truck, Store, Map, Users,
-  Square, Circle, Triangle, Info, Star, Edit3, FileText, Download, MessageCircle, Instagram, Upload
+  Square, Circle, Triangle, Info, Star, Edit3, FileText, Download, MessageCircle, Instagram, Upload,
+  Activity, Globe, Smartphone, Clock, Calendar
 } from 'lucide-react';
 
 // ==============================================================================
@@ -26,23 +27,17 @@ const firebaseConfig = {
   appId: "1:570132018153:web:ef8577e7109df18aadd178",
   measurementId: "G-4GCBZ6YWM3"
 };
-
 // Inicialización
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-// Usamos un ID fijo o generado si no existe para asegurar la ruta
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'ebe-muebles-v3';
 
 // --- UTILIDAD: CONVERTIDOR DE LINKS DE DRIVE ---
 const getDirectDriveUrl = (url) => {
   if (!url) return '';
-  // Si es data:image (base64 subido desde PC), devolver tal cual
   if (url.startsWith('data:image')) return url;
-  // Si no es un link de google drive, devolver tal cual
   if (!url.includes('drive.google.com')) return url;
-
-  // Intentar extraer el ID del archivo
   const idMatch = url.match(/\/d\/(.*?)\//) || url.match(/id=(.*?)(&|$)/);
   if (idMatch && idMatch[1]) {
     return `https://drive.google.com/uc?export=view&id=${idMatch[1]}`;
@@ -125,7 +120,6 @@ const TESTIMONIOS = [
   { id: 3, nombre: "Lucas M.", texto: "Muy prolijo el trabajo en hierro y madera. Recomendadisimos.", stars: 5 },
 ];
 
-// --- MADERAS (Editables desde el Panel) ---
 const DEFAULT_MADERAS = [
   { id: 'eucalipto', nombre: 'Eucalipto', tier: 'basica', src: "https://images.unsplash.com/photo-1626071465992-0081e3532f3c?q=80&w=400&auto=format&fit=crop" },
   { id: 'guayubira', nombre: 'Guayubira', tier: 'intermedia', src: "https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?q=80&w=400&auto=format&fit=crop" },
@@ -237,9 +231,7 @@ const GlobalStyles = () => (
 
 const BackgroundAmbience = () => (
   <div className="fixed inset-0 z-[-1] overflow-hidden bg-[#E8DCCA] pointer-events-none">
-    {/* Subtle gradient overlay to add depth */}
     <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent"></div>
-    {/* Very subtle noise texture for craftsmanship feel */}
     <div className="absolute inset-0 opacity-[0.3]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E")` }}></div>
   </div>
 );
@@ -265,7 +257,7 @@ const Header = ({ onBack, title, onLogoClick, showCart, cartCount, onCartClick, 
         <img
           src={getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}
           alt="eBe Logo"
-          className="h-10 md:h-12 w-auto opacity-80 group-hover:opacity-100 transition-opacity object-contain"
+          className="h-8 w-auto opacity-80 group-hover:opacity-100 transition-opacity object-contain"
         />
       </div>
     </div>
@@ -275,7 +267,6 @@ const Header = ({ onBack, title, onLogoClick, showCart, cartCount, onCartClick, 
 const IconRenderer = ({ name, size = 24, className }) => {
   const icons = { Table, DoorOpen, Armchair, RectangleVertical, Box, Monitor, Utensils, Archive, Bed, Tv };
   const IconComponent = icons[name] || Box;
-  // Safety check
   if (!IconComponent) return null;
   return <IconComponent size={size} className={className} />;
 };
@@ -299,22 +290,22 @@ const App = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminTab, setAdminTab] = useState('orders');
 
-  // Datos
   const [costos, setCostos] = useState(DEFAULT_COSTOS);
   const [galeria, setGaleria] = useState(DEFAULT_GALERIA);
   const [maderas, setMaderas] = useState(DEFAULT_MADERAS);
   const [logoUrl, setLogoUrl] = useState(DEFAULT_LOGO_SRC);
   const [instagramUrl, setInstagramUrl] = useState(DEFAULT_INSTAGRAM_URL);
 
+  // Estado para Analíticas
+  const [stats, setStats] = useState({ totalVisits: 0, byHour: {}, byDevice: { mobile: 0, desktop: 0 }, byCity: {} });
+
   const [orders, setOrders] = useState([]);
   const [carrito, setCarrito] = useState([]);
 
-  // Admin Galeria/Materiales State
   const [newImage, setNewImage] = useState({ url: '', alt: '' });
   const [adminLogoInput, setAdminLogoInput] = useState('');
   const [adminInstagramInput, setAdminInstagramInput] = useState('');
 
-  // Selección
   const [catSeleccionada, setCatSeleccionada] = useState(null);
   const [muebleSeleccionado, setMuebleSeleccionado] = useState(null);
 
@@ -344,7 +335,6 @@ const App = () => {
   const fileInputRef = useRef(null);
   const logoFileInputRef = useRef(null);
 
-  // LOGICA TITULO DINAMICO
   const getHeaderTitle = () => {
     if (paso === 5) return "Galería";
     if (paso === 4) return "Tu Pedido";
@@ -355,7 +345,65 @@ const App = () => {
     return "EBE MUEBLES";
   };
 
-  // --- EFECTOS & LOGICA ---
+  // --- RASTREADOR DE VISITAS (ANALYTICS) ---
+  useEffect(() => {
+    const trackVisit = async () => {
+      // Simple session check to prevent counting refreshes
+      if (sessionStorage.getItem('visited')) return;
+
+      try {
+        // Obtener ubicación aproximada (gratis)
+        const ipData = await fetch('https://ipapi.co/json/').then(res => res.json()).catch(() => ({ city: 'Desconocido' }));
+
+        const visitData = {
+          timestamp: new Date(),
+          city: ipData.city || 'Desconocido',
+          region: ipData.region || 'Desconocido',
+          device: /Mobi|Android/i.test(navigator.userAgent) ? 'Móvil' : 'Escritorio',
+          hour: new Date().getHours()
+        };
+
+        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'stats'), visitData);
+        sessionStorage.setItem('visited', 'true');
+      } catch (e) {
+        console.warn("Analytics error:", e);
+      }
+    };
+    trackVisit();
+  }, []);
+
+  // Cargar Estadísticas (Solo Admin)
+  useEffect(() => {
+    if (isAdmin && adminTab === 'stats') {
+      const fetchStats = async () => {
+        const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'stats'), orderBy('timestamp', 'desc'), limit(100)); // Limit last 100 for performance
+        const snapshot = await getDocs(q);
+        const data = snapshot.docs.map(d => d.data());
+
+        const statsData = {
+          totalVisits: data.length, // Only counts last 100 loaded, real total requires aggregation function
+          byHour: {},
+          byDevice: { mobile: 0, desktop: 0 },
+          byCity: {}
+        };
+
+        data.forEach(v => {
+          // By Hour
+          const h = v.hour + 'hs';
+          statsData.byHour[h] = (statsData.byHour[h] || 0) + 1;
+          // By Device
+          if (v.device === 'Móvil') statsData.byDevice.mobile++;
+          else statsData.byDevice.desktop++;
+          // By City
+          const loc = v.city;
+          statsData.byCity[loc] = (statsData.byCity[loc] || 0) + 1;
+        });
+        setStats(statsData);
+      };
+      fetchStats();
+    }
+  }, [isAdmin, adminTab]);
+
 
   useEffect(() => {
     const initAuth = async () => {
@@ -367,11 +415,9 @@ const App = () => {
     initAuth();
   }, []);
 
-  // Cargar Configuracion (Logo & Instagram)
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        // RUTA CORREGIDA: Usando la estructura pública permitida
         const docSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'general'));
         if (docSnap.exists()) {
           if (docSnap.data().logoUrl) {
@@ -421,10 +467,7 @@ const App = () => {
       return;
     }
     try {
-      // Convertir URL de Drive si es necesario antes de guardar
       const processedLogoUrl = getDirectDriveUrl(adminLogoInput) || DEFAULT_LOGO_SRC;
-
-      // RUTA CORREGIDA: Guardando en la ubicación pública permitida
       await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'general'), {
         logoUrl: processedLogoUrl,
         instagramUrl: adminInstagramInput || DEFAULT_INSTAGRAM_URL
@@ -443,7 +486,7 @@ const App = () => {
   const handleLogoFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 400000) { // Limitado a 400KB para asegurar guardado en Firestore
+      if (file.size > 400000) {
         alert("La imagen es muy pesada. Por favor usa una imagen menor a 400KB o una URL.");
         return;
       }
@@ -455,7 +498,6 @@ const App = () => {
     }
   };
 
-  // Convertir URL de nueva imagen de galeria
   const addGalleryImage = () => {
     if (newImage.url) {
       const processedUrl = getDirectDriveUrl(newImage.url);
@@ -464,10 +506,8 @@ const App = () => {
     }
   };
 
-  // Convertir URL al actualizar madera
   const updateMadera = (index, field, value) => {
     const newMaderas = [...maderas];
-    // Si es el campo src, procesarlo
     if (field === 'src') {
       newMaderas[index][field] = getDirectDriveUrl(value);
     } else {
@@ -489,7 +529,6 @@ const App = () => {
     }
   }, [paso, muebleSeleccionado]);
 
-  // Logica Cama y Rack Inteligente
   const handleTvSize = (inches) => {
     const w = Math.round(Number(inches) * 2.21 + 30);
     setConfig({ ...config, tvSize: inches, ancho: w, largo: 55, profundidad: 40 });
@@ -500,7 +539,6 @@ const App = () => {
     if (medidas) setConfig({ ...config, ancho: medidas.w, largo: 60, profundidad: medidas.l });
   };
 
-  // Lógica Materiales
   useEffect(() => {
     if (paso === 3) {
       if (config.uso === 'exterior' && (config.tipoConstruccion === 'placa' || config.tipoConstruccion === 'puerta_placa')) {
@@ -542,9 +580,7 @@ const App = () => {
     }
   }, [config.tipoConstruccion, config.uso, paso, costos, maderas]);
 
-  // Calculadora
   useEffect(() => {
-    // Regla: Mobiliario SIEMPRE es a cotizar
     if (catSeleccionada?.id === 'cat_muebles') {
       setPrecioItemActual(0);
       return;
@@ -569,7 +605,6 @@ const App = () => {
       } else {
         let base = 5000;
         if (muebleSeleccionado?.id?.includes('puerta')) {
-          // LOGICA PUERTAS: Interior vs Exterior
           const tier = mat?.tier || 'basica';
           if (config.uso === 'exterior') {
             if (tier === 'basica') base = costos.madera_p_ext_basica;
@@ -581,9 +616,8 @@ const App = () => {
             else base = costos.madera_p_int_intermedia;
           }
         } else {
-          // LOGICA MESAS: Base + Factor Exterior
           base = mat ? costos[`madera_${mat.tier}`] : costos.madera_basica;
-          if (config.uso === 'exterior') base *= costos.factor_exterior; // 1.3
+          if (config.uso === 'exterior') base *= costos.factor_exterior;
         }
 
         let pies = (config.ancho / 2.5) * 2 * (config.largo / 100) * 0.3;
@@ -678,7 +712,7 @@ const App = () => {
             .item-desc { font-size: 12px; color: #666; margin-top: 4px; }
             .total-section { text-align: right; margin-top: 20px; border-top: 2px solid #5D4037; padding-top: 20px; }
             .total-label { font-size: 14px; text-transform: uppercase; color: #666; }
-            .total-amount { font-size: 32px; font-weight: 700; color: #8B5E3C; font-family: 'Montserrat', sans-serif; }
+            .total-amount { font-size: 32px; font-weight: 700; color: #5D4037; font-family: 'Montserrat', sans-serif; }
             .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 20px; }
           </style>
         </head>
@@ -780,12 +814,52 @@ const App = () => {
       </div>
 
       <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
-        {['orders', 'prices', 'materiales', 'gallery', 'config'].map(tab => (
+        {['stats', 'orders', 'prices', 'materiales', 'gallery', 'config'].map(tab => (
           <button key={tab} onClick={() => setAdminTab(tab)} className={`px-6 py-3 rounded-full font-bold uppercase tracking-wider text-xs transition-all ${adminTab === tab ? `${THEME.primary} text-white shadow-lg` : 'bg-white border border-[#E0D8C3] text-[#666]'}`}>
-            {tab === 'config' ? 'Configuración' : tab === 'orders' ? 'Pedidos' : tab === 'prices' ? 'Precios' : tab === 'materiales' ? 'Materiales' : 'Galería'}
+            {tab === 'stats' ? 'Estadísticas' : tab === 'config' ? 'Configuración' : tab === 'orders' ? 'Pedidos' : tab === 'prices' ? 'Precios' : tab === 'materiales' ? 'Materiales' : 'Galería'}
           </button>
         ))}
       </div>
+
+      {adminTab === 'stats' && (
+        <div className="space-y-6 pb-20">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className={`bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm flex items-center gap-4`}>
+              <div className={`p-4 rounded-full bg-[#E0D8C3] text-[#5D4037]`}><Activity size={24} /></div>
+              <div><h3 className="text-2xl font-bold text-[#5D4037]">{stats.totalVisits}</h3><span className="text-xs text-[#666] uppercase">Visitas Recientes</span></div>
+            </div>
+            <div className={`bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm flex items-center gap-4`}>
+              <div className={`p-4 rounded-full bg-[#E0D8C3] text-[#5D4037]`}><Smartphone size={24} /></div>
+              <div><h3 className="text-2xl font-bold text-[#5D4037]">{stats.byDevice.mobile}</h3><span className="text-xs text-[#666] uppercase">Desde Celular</span></div>
+            </div>
+            <div className={`bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm flex items-center gap-4`}>
+              <div className={`p-4 rounded-full bg-[#E0D8C3] text-[#5D4037]`}><Globe size={24} /></div>
+              <div><h3 className="text-2xl font-bold text-[#5D4037]">{stats.byDevice.desktop}</h3><span className="text-xs text-[#666] uppercase">Desde PC</span></div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className={`bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm`}>
+              <h3 className={`${THEME.accent} font-bold uppercase text-sm mb-4 flex items-center gap-2`}><Clock size={16} /> Horarios más activos</h3>
+              <div className="space-y-2">
+                {Object.entries(stats.byHour).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([hour, count]) => (
+                  <div key={hour} className="flex justify-between text-sm"><span className="text-[#333]">{hour}</span> <span className="font-bold text-[#5D4037]">{count} visitas</span></div>
+                ))}
+                {Object.keys(stats.byHour).length === 0 && <span className="text-xs text-[#999]">Sin datos aún.</span>}
+              </div>
+            </div>
+            <div className={`bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm`}>
+              <h3 className={`${THEME.accent} font-bold uppercase text-sm mb-4 flex items-center gap-2`}><MapPin size={16} /> Top Ubicaciones</h3>
+              <div className="space-y-2">
+                {Object.entries(stats.byCity).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([city, count]) => (
+                  <div key={city} className="flex justify-between text-sm"><span className="text-[#333]">{city}</span> <span className="font-bold text-[#5D4037]">{count}</span></div>
+                ))}
+                {Object.keys(stats.byCity).length === 0 && <span className="text-xs text-[#999]">Sin datos aún.</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {adminTab === 'prices' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
@@ -1312,11 +1386,12 @@ const App = () => {
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-16">
               {galeria.map(img => (
-                <div key={img.id} onClick={() => setSelectedImage(img)} className="aspect-square rounded-2xl overflow-hidden cursor-pointer group relative shadow-sm hover:shadow-md transition-all border border-[#E0D8C3]">
+                <div key={img.id} className="relative group rounded-xl overflow-hidden aspect-square border border-[#E0D8C3]">
                   <img src={getDirectDriveUrl(img.src)} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <span className="text-white font-bold uppercase tracking-widest text-sm border-b border-white pb-1 font-sans">{img.alt}</span>
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <button onClick={() => removeGalleryImage(img.id)} className="bg-red-500 text-white p-2 rounded-full"><Trash2 size={16} /></button>
                   </div>
+                  <span className="absolute bottom-0 left-0 right-0 bg-white/90 text-[#333] text-[10px] p-1 text-center truncate">{img.alt}</span>
                 </div>
               ))}
             </div>
