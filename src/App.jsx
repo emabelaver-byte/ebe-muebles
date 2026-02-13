@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import {
-  getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, query, orderBy, limit, getDocs
+  getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, query, orderBy
 } from 'firebase/firestore';
 import {
   Ruler, TreePine, Palette, Send, ShoppingCart, Plus, Trash2, Settings,
@@ -10,8 +10,7 @@ import {
   Armchair, Sun, CloudRain, Hammer, Monitor, Tv, Bed, Utensils, Archive,
   RectangleVertical, Box, LogOut, Save, Coins, ImagePlus, Lock, MapPin,
   User, Paperclip, X, Check, Table, DoorOpen, ArrowLeft, Truck, Store, Map, Users,
-  Square, Circle, Triangle, Info, Star, Edit3, FileText, Download, MessageCircle, Instagram, Upload,
-  Activity, Globe, Smartphone, Clock, Calendar
+  Square, Circle, Triangle, Info, Star, Edit3, FileText, Download, MessageCircle, Instagram, Upload
 } from 'lucide-react';
 
 // ==============================================================================
@@ -27,6 +26,11 @@ const firebaseConfig = {
   appId: "1:570132018153:web:ef8577e7109df18aadd178",
   measurementId: "G-4GCBZ6YWM3"
 };
+
+// 🛑 2. PEGA AQUÍ TU ID DE MEDICIÓN DE GOOGLE ANALYTICS 🛑
+// Lo encuentras en Analytics -> Administrar -> Flujos de datos (Empieza con "G-")
+const GA_MEASUREMENT_ID = "G-XXXXXXXXXX";
+
 // Inicialización
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -120,6 +124,7 @@ const TESTIMONIOS = [
   { id: 3, nombre: "Lucas M.", texto: "Muy prolijo el trabajo en hierro y madera. Recomendadisimos.", stars: 5 },
 ];
 
+// --- MADERAS (Editables desde el Panel) ---
 const DEFAULT_MADERAS = [
   { id: 'eucalipto', nombre: 'Eucalipto', tier: 'basica', src: "https://images.unsplash.com/photo-1626071465992-0081e3532f3c?q=80&w=400&auto=format&fit=crop" },
   { id: 'guayubira', nombre: 'Guayubira', tier: 'intermedia', src: "https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?q=80&w=400&auto=format&fit=crop" },
@@ -267,6 +272,7 @@ const Header = ({ onBack, title, onLogoClick, showCart, cartCount, onCartClick, 
 const IconRenderer = ({ name, size = 24, className }) => {
   const icons = { Table, DoorOpen, Armchair, RectangleVertical, Box, Monitor, Utensils, Archive, Bed, Tv };
   const IconComponent = icons[name] || Box;
+  // Safety check
   if (!IconComponent) return null;
   return <IconComponent size={size} className={className} />;
 };
@@ -295,9 +301,6 @@ const App = () => {
   const [maderas, setMaderas] = useState(DEFAULT_MADERAS);
   const [logoUrl, setLogoUrl] = useState(DEFAULT_LOGO_SRC);
   const [instagramUrl, setInstagramUrl] = useState(DEFAULT_INSTAGRAM_URL);
-
-  // Estado para Analíticas
-  const [stats, setStats] = useState({ totalVisits: 0, byHour: {}, byDevice: { mobile: 0, desktop: 0 }, byCity: {} });
 
   const [orders, setOrders] = useState([]);
   const [carrito, setCarrito] = useState([]);
@@ -345,65 +348,29 @@ const App = () => {
     return "EBE MUEBLES";
   };
 
-  // --- RASTREADOR DE VISITAS (ANALYTICS) ---
+  // --- GOOGLE ANALYTICS INTEGRATION ---
   useEffect(() => {
-    const trackVisit = async () => {
-      // Simple session check to prevent counting refreshes
-      if (sessionStorage.getItem('visited')) return;
+    // Si no hay ID de medición o es el placeholder, no hacer nada
+    if (!GA_MEASUREMENT_ID || GA_MEASUREMENT_ID === "G-XXXXXXXXXX") return;
 
-      try {
-        // Obtener ubicación aproximada (gratis)
-        const ipData = await fetch('https://ipapi.co/json/').then(res => res.json()).catch(() => ({ city: 'Desconocido' }));
+    // Verificar si el script ya existe
+    if (document.getElementById('ga-script')) return;
 
-        const visitData = {
-          timestamp: new Date(),
-          city: ipData.city || 'Desconocido',
-          region: ipData.region || 'Desconocido',
-          device: /Mobi|Android/i.test(navigator.userAgent) ? 'Móvil' : 'Escritorio',
-          hour: new Date().getHours()
-        };
+    // Inyectar script de gtag.js
+    const script = document.createElement('script');
+    script.id = 'ga-script';
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
 
-        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'stats'), visitData);
-        sessionStorage.setItem('visited', 'true');
-      } catch (e) {
-        console.warn("Analytics error:", e);
-      }
-    };
-    trackVisit();
+    document.head.appendChild(script);
+
+    // Inicializar dataLayer
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { window.dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', GA_MEASUREMENT_ID);
+
   }, []);
-
-  // Cargar Estadísticas (Solo Admin)
-  useEffect(() => {
-    if (isAdmin && adminTab === 'stats') {
-      const fetchStats = async () => {
-        const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'stats'), orderBy('timestamp', 'desc'), limit(100)); // Limit last 100 for performance
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(d => d.data());
-
-        const statsData = {
-          totalVisits: data.length, // Only counts last 100 loaded, real total requires aggregation function
-          byHour: {},
-          byDevice: { mobile: 0, desktop: 0 },
-          byCity: {}
-        };
-
-        data.forEach(v => {
-          // By Hour
-          const h = v.hour + 'hs';
-          statsData.byHour[h] = (statsData.byHour[h] || 0) + 1;
-          // By Device
-          if (v.device === 'Móvil') statsData.byDevice.mobile++;
-          else statsData.byDevice.desktop++;
-          // By City
-          const loc = v.city;
-          statsData.byCity[loc] = (statsData.byCity[loc] || 0) + 1;
-        });
-        setStats(statsData);
-      };
-      fetchStats();
-    }
-  }, [isAdmin, adminTab]);
-
 
   useEffect(() => {
     const initAuth = async () => {
@@ -712,7 +679,7 @@ const App = () => {
             .item-desc { font-size: 12px; color: #666; margin-top: 4px; }
             .total-section { text-align: right; margin-top: 20px; border-top: 2px solid #5D4037; padding-top: 20px; }
             .total-label { font-size: 14px; text-transform: uppercase; color: #666; }
-            .total-amount { font-size: 32px; font-weight: 700; color: #5D4037; font-family: 'Montserrat', sans-serif; }
+            .total-amount { font-size: 32px; font-weight: 700; color: #8B5E3C; font-family: 'Montserrat', sans-serif; }
             .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 20px; }
           </style>
         </head>
@@ -814,52 +781,12 @@ const App = () => {
       </div>
 
       <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
-        {['stats', 'orders', 'prices', 'materiales', 'gallery', 'config'].map(tab => (
+        {['orders', 'prices', 'materiales', 'gallery', 'config'].map(tab => (
           <button key={tab} onClick={() => setAdminTab(tab)} className={`px-6 py-3 rounded-full font-bold uppercase tracking-wider text-xs transition-all ${adminTab === tab ? `${THEME.primary} text-white shadow-lg` : 'bg-white border border-[#E0D8C3] text-[#666]'}`}>
-            {tab === 'stats' ? 'Estadísticas' : tab === 'config' ? 'Configuración' : tab === 'orders' ? 'Pedidos' : tab === 'prices' ? 'Precios' : tab === 'materiales' ? 'Materiales' : 'Galería'}
+            {tab === 'config' ? 'Configuración' : tab === 'orders' ? 'Pedidos' : tab === 'prices' ? 'Precios' : tab === 'materiales' ? 'Materiales' : 'Galería'}
           </button>
         ))}
       </div>
-
-      {adminTab === 'stats' && (
-        <div className="space-y-6 pb-20">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className={`bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm flex items-center gap-4`}>
-              <div className={`p-4 rounded-full bg-[#E0D8C3] text-[#5D4037]`}><Activity size={24} /></div>
-              <div><h3 className="text-2xl font-bold text-[#5D4037]">{stats.totalVisits}</h3><span className="text-xs text-[#666] uppercase">Visitas Recientes</span></div>
-            </div>
-            <div className={`bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm flex items-center gap-4`}>
-              <div className={`p-4 rounded-full bg-[#E0D8C3] text-[#5D4037]`}><Smartphone size={24} /></div>
-              <div><h3 className="text-2xl font-bold text-[#5D4037]">{stats.byDevice.mobile}</h3><span className="text-xs text-[#666] uppercase">Desde Celular</span></div>
-            </div>
-            <div className={`bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm flex items-center gap-4`}>
-              <div className={`p-4 rounded-full bg-[#E0D8C3] text-[#5D4037]`}><Globe size={24} /></div>
-              <div><h3 className="text-2xl font-bold text-[#5D4037]">{stats.byDevice.desktop}</h3><span className="text-xs text-[#666] uppercase">Desde PC</span></div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className={`bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm`}>
-              <h3 className={`${THEME.accent} font-bold uppercase text-sm mb-4 flex items-center gap-2`}><Clock size={16} /> Horarios más activos</h3>
-              <div className="space-y-2">
-                {Object.entries(stats.byHour).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([hour, count]) => (
-                  <div key={hour} className="flex justify-between text-sm"><span className="text-[#333]">{hour}</span> <span className="font-bold text-[#5D4037]">{count} visitas</span></div>
-                ))}
-                {Object.keys(stats.byHour).length === 0 && <span className="text-xs text-[#999]">Sin datos aún.</span>}
-              </div>
-            </div>
-            <div className={`bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm`}>
-              <h3 className={`${THEME.accent} font-bold uppercase text-sm mb-4 flex items-center gap-2`}><MapPin size={16} /> Top Ubicaciones</h3>
-              <div className="space-y-2">
-                {Object.entries(stats.byCity).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([city, count]) => (
-                  <div key={city} className="flex justify-between text-sm"><span className="text-[#333]">{city}</span> <span className="font-bold text-[#5D4037]">{count}</span></div>
-                ))}
-                {Object.keys(stats.byCity).length === 0 && <span className="text-xs text-[#999]">Sin datos aún.</span>}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {adminTab === 'prices' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
@@ -1386,7 +1313,7 @@ const App = () => {
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-16">
               {galeria.map(img => (
-                <div key={img.id} className="relative group rounded-xl overflow-hidden aspect-square border border-[#E0D8C3]">
+                <div key={img.id} onClick={() => setSelectedImage(img)} className="aspect-square rounded-2xl overflow-hidden cursor-pointer group relative shadow-sm hover:shadow-md transition-all border border-[#E0D8C3]">
                   <img src={getDirectDriveUrl(img.src)} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <button onClick={() => removeGalleryImage(img.id)} className="bg-red-500 text-white p-2 rounded-full"><Trash2 size={16} /></button>
