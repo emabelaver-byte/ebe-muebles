@@ -10,7 +10,8 @@ import {
   Armchair, Sun, CloudRain, Hammer, Monitor, Tv, Bed, Utensils, Archive,
   RectangleVertical, Box, LogOut, Save, Coins, ImagePlus, Lock, MapPin,
   User, Paperclip, X, Check, Table, DoorOpen, ArrowLeft, Truck, Store, Map, Users,
-  Square, Circle, Triangle, Info, Star, Edit3, FileText, Download, MessageCircle, Instagram, Upload
+  Square, Circle, Triangle, Info, Star, Edit3, FileText, Download, MessageCircle, Instagram, Upload,
+  BarChart3, PieChart, ExternalLink, Smartphone, Globe
 } from 'lucide-react';
 
 // ==============================================================================
@@ -27,8 +28,7 @@ const firebaseConfig = {
   measurementId: "G-4GCBZ6YWM3"
 };
 
-// 🛑 2. PEGA AQUÍ TU ID DE MEDICIÓN DE GOOGLE ANALYTICS 🛑
-// Lo encuentras en Analytics -> Administrar -> Flujos de datos (Empieza con "G-")
+// 🛑 2. ID DE MEDICIÓN DE GOOGLE ANALYTICS
 const GA_MEASUREMENT_ID = "G-XXXXXXXXXX";
 
 // Inicialización
@@ -37,12 +37,19 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'ebe-muebles-v3';
 
-// --- UTILIDAD: CONVERTIDOR DE LINKS DE DRIVE ---
+// --- UTILIDAD: CONVERTIDOR DE LINKS DE DRIVE MEJORADO ---
 const getDirectDriveUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('data:image')) return url;
   if (!url.includes('drive.google.com')) return url;
-  const idMatch = url.match(/\/d\/(.*?)\//) || url.match(/id=(.*?)(&|$)/);
+
+  // Patrón 1: /file/d/ID/view
+  let idMatch = url.match(/\/file\/d\/(.*?)\//);
+  // Patrón 2: id=ID
+  if (!idMatch) idMatch = url.match(/id=(.*?)(&|$)/);
+  // Patrón 3: /d/ID/
+  if (!idMatch) idMatch = url.match(/\/d\/(.*?)\//);
+
   if (idMatch && idMatch[1]) {
     return `https://drive.google.com/uc?export=view&id=${idMatch[1]}`;
   }
@@ -69,7 +76,7 @@ const THEME = {
 
 // VALORES POR DEFECTO
 const DEFAULT_LOGO_SRC = "https://cdn-icons-png.flaticon.com/512/3030/3030336.png";
-const DEFAULT_INSTAGRAM_URL = "https://instagram.com/ebe.muebles";
+const DEFAULT_INSTAGRAM_URL = "https://www.instagram.com/_u/ebe.muebles/"; // Formato _u/ fuerza app
 
 // EMAILS AUTORIZADOS
 const ADMIN_EMAILS = [
@@ -118,7 +125,7 @@ const DEFAULT_GALERIA = [
   { id: 3, src: "https://images.unsplash.com/photo-1617806118233-18e1de247200?auto=format&fit=crop&q=80&w=600", alt: "Puerta Pivotante" },
 ];
 
-const TESTIMONIOS = [
+const DEFAULT_TESTIMONIOS = [
   { id: 1, nombre: "Martín G.", texto: "La mesa quedó increíble. La madera es de primera calidad.", stars: 5 },
   { id: 2, nombre: "Sofía L.", texto: "Excelente atención. Me asesoraron con las medidas y quedó perfecto.", stars: 5 },
   { id: 3, nombre: "Lucas M.", texto: "Muy prolijo el trabajo en hierro y madera. Recomendadisimos.", stars: 5 },
@@ -220,13 +227,13 @@ const GlobalStyles = () => (
     
     body { font-family: 'Inter', sans-serif; background-color: #E8DCCA; }
     h1, h2, h3, h4, h5, h6 { font-family: 'Montserrat', sans-serif; }
-     
+      
     @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-5px); } 100% { transform: translateY(0px); } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-     
+      
     .animate-float { animation: float 6s ease-in-out infinite; }
     .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
-     
+      
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: #E8DCCA; }
     ::-webkit-scrollbar-thumb { background: #8B5E3C; border-radius: 2px; }
@@ -262,6 +269,7 @@ const Header = ({ onBack, title, onLogoClick, showCart, cartCount, onCartClick, 
         <img
           src={getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}
           alt="eBe Logo"
+          referrerPolicy="no-referrer"
           className="h-8 w-auto opacity-80 group-hover:opacity-100 transition-opacity object-contain"
         />
       </div>
@@ -294,13 +302,17 @@ const InputMedida = ({ label, val, onChange }) => (
 const App = () => {
   const [paso, setPaso] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [adminTab, setAdminTab] = useState('orders');
+  const [adminTab, setAdminTab] = useState('dashboard');
 
   const [costos, setCostos] = useState(DEFAULT_COSTOS);
   const [galeria, setGaleria] = useState(DEFAULT_GALERIA);
   const [maderas, setMaderas] = useState(DEFAULT_MADERAS);
+  const [testimonios, setTestimonios] = useState(DEFAULT_TESTIMONIOS);
   const [logoUrl, setLogoUrl] = useState(DEFAULT_LOGO_SRC);
   const [instagramUrl, setInstagramUrl] = useState(DEFAULT_INSTAGRAM_URL);
+
+  // Stats ficticias para demo
+  const [visitStats, setVisitStats] = useState({ mobile: 0, desktop: 0, total: 0 });
 
   const [orders, setOrders] = useState([]);
   const [carrito, setCarrito] = useState([]);
@@ -328,6 +340,7 @@ const App = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [showAbout, setShowAbout] = useState(false);
   const [showReviews, setShowReviews] = useState(false);
+  const [newReview, setNewReview] = useState({ nombre: '', texto: '', stars: 5 });
 
   const [showAi, setShowAi] = useState(false);
   const [aiQuery, setAiQuery] = useState('');
@@ -383,6 +396,20 @@ const App = () => {
   }, []);
 
   useEffect(() => {
+    // Simple visit counter simulation for Admin Dashboard
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const stored = JSON.parse(localStorage.getItem('ebe_visits') || '{"mobile": 0, "desktop": 0, "total": 0}');
+
+    // Increment only once per session
+    if (!sessionStorage.getItem('visited')) {
+      if (isMobile) stored.mobile++;
+      else stored.desktop++;
+      stored.total++;
+      localStorage.setItem('ebe_visits', JSON.stringify(stored));
+      sessionStorage.setItem('visited', 'true');
+    }
+    setVisitStats(stored);
+
     const fetchSettings = async () => {
       try {
         const docSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'general'));
@@ -435,13 +462,20 @@ const App = () => {
     }
     try {
       const processedLogoUrl = getDirectDriveUrl(adminLogoInput) || DEFAULT_LOGO_SRC;
+
+      // Ensure Instagram URL has https://www
+      let processedInstaUrl = adminInstagramInput || DEFAULT_INSTAGRAM_URL;
+      if (processedInstaUrl.includes('instagram.com') && !processedInstaUrl.startsWith('http')) {
+        processedInstaUrl = `https://${processedInstaUrl}`;
+      }
+
       await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'general'), {
         logoUrl: processedLogoUrl,
-        instagramUrl: adminInstagramInput || DEFAULT_INSTAGRAM_URL
+        instagramUrl: processedInstaUrl
       }, { merge: true });
 
       if (processedLogoUrl) setLogoUrl(processedLogoUrl);
-      if (adminInstagramInput) setInstagramUrl(adminInstagramInput);
+      if (processedInstaUrl) setInstagramUrl(processedInstaUrl);
 
       alert("Configuración actualizada con éxito.");
     } catch (e) {
@@ -482,6 +516,17 @@ const App = () => {
     }
     setMaderas(newMaderas);
   };
+
+  // Review management
+  const addReview = () => {
+    if (newReview.nombre && newReview.texto) {
+      setTestimonios([...testimonios, { id: Date.now(), ...newReview }]);
+      setNewReview({ nombre: '', texto: '', stars: 5 });
+    }
+  };
+  const removeReview = (id) => {
+    setTestimonios(testimonios.filter(t => t.id !== id));
+  }
 
   useEffect(() => {
     if (paso === 3 && muebleSeleccionado) {
@@ -681,6 +726,9 @@ const App = () => {
             .total-label { font-size: 14px; text-transform: uppercase; color: #666; }
             .total-amount { font-size: 32px; font-weight: 700; color: #8B5E3C; font-family: 'Montserrat', sans-serif; }
             .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 20px; }
+            @media print {
+              body { -webkit-print-color-adjust: exact; }
+            }
           </style>
         </head>
         <body>
@@ -774,153 +822,268 @@ const App = () => {
 
   // --- RENDER ADMIN ---
   if (isAdmin) return (
-    <div className={`min-h-screen bg-white text-[#333] p-6 font-sans`}>
-      <div className="flex justify-between items-center mb-8 pb-4 border-b border-[#E0D8C3]">
-        <h2 className={`text-2xl font-bold ${THEME.accent} flex items-center gap-3 font-sans uppercase`}><Settings className="animate-spin-slow" /> Panel Admin</h2>
-        <button onClick={() => { signOut(auth); setIsAdmin(false); signInAnonymously(auth); }} className="text-red-500 flex gap-2 hover:bg-red-50 p-2 rounded-xl transition-colors"><LogOut size={20} /> Salir</button>
-      </div>
+    <div className={`min-h-screen bg-[#F5F5F5] text-[#333] font-sans flex`}>
+      {/* Sidebar Admin */}
+      <div className="w-20 md:w-64 bg-white border-r border-[#E0E0E0] flex flex-col fixed h-full z-20 transition-all">
+        <div className="p-4 md:p-6 border-b border-[#E0E0E0] flex items-center justify-center md:justify-start gap-3">
+          <Settings className="text-[#5D4037] animate-spin-slow" />
+          <span className="font-bold text-[#5D4037] text-lg hidden md:block uppercase tracking-wider">Admin</span>
+        </div>
 
-      <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
-        {['orders', 'prices', 'materiales', 'gallery', 'config'].map(tab => (
-          <button key={tab} onClick={() => setAdminTab(tab)} className={`px-6 py-3 rounded-full font-bold uppercase tracking-wider text-xs transition-all ${adminTab === tab ? `${THEME.primary} text-white shadow-lg` : 'bg-white border border-[#E0D8C3] text-[#666]'}`}>
-            {tab === 'config' ? 'Configuración' : tab === 'orders' ? 'Pedidos' : tab === 'prices' ? 'Precios' : tab === 'materiales' ? 'Materiales' : 'Galería'}
+        <div className="flex-1 overflow-y-auto py-4">
+          {/* Section: Dashboard */}
+          <div className="px-4 mb-2 text-xs font-bold text-[#999] uppercase hidden md:block tracking-widest">Resumen</div>
+          <button onClick={() => setAdminTab('dashboard')} className={`w-full flex items-center gap-3 p-4 md:px-6 hover:bg-[#F9F7F2] transition-colors ${adminTab === 'dashboard' ? 'bg-[#F9F7F2] border-r-4 border-[#8B5E3C] text-[#5D4037]' : 'text-[#666]'}`}>
+            <BarChart3 size={20} /> <span className="hidden md:block font-medium">Dashboard</span>
           </button>
-        ))}
+          <button onClick={() => setAdminTab('orders')} className={`w-full flex items-center gap-3 p-4 md:px-6 hover:bg-[#F9F7F2] transition-colors ${adminTab === 'orders' ? 'bg-[#F9F7F2] border-r-4 border-[#8B5E3C] text-[#5D4037]' : 'text-[#666]'}`}>
+            <ShoppingCart size={20} /> <span className="hidden md:block font-medium">Pedidos</span>
+          </button>
+
+          {/* Section: Content */}
+          <div className="px-4 mb-2 mt-6 text-xs font-bold text-[#999] uppercase hidden md:block tracking-widest">Contenido</div>
+          <button onClick={() => setAdminTab('gallery')} className={`w-full flex items-center gap-3 p-4 md:px-6 hover:bg-[#F9F7F2] transition-colors ${adminTab === 'gallery' ? 'bg-[#F9F7F2] border-r-4 border-[#8B5E3C] text-[#5D4037]' : 'text-[#666]'}`}>
+            <ImageIcon size={20} /> <span className="hidden md:block font-medium">Galería</span>
+          </button>
+          <button onClick={() => setAdminTab('reviews')} className={`w-full flex items-center gap-3 p-4 md:px-6 hover:bg-[#F9F7F2] transition-colors ${adminTab === 'reviews' ? 'bg-[#F9F7F2] border-r-4 border-[#8B5E3C] text-[#5D4037]' : 'text-[#666]'}`}>
+            <MessageSquare size={20} /> <span className="hidden md:block font-medium">Reseñas</span>
+          </button>
+
+          {/* Section: Config */}
+          <div className="px-4 mb-2 mt-6 text-xs font-bold text-[#999] uppercase hidden md:block tracking-widest">Ajustes</div>
+          <button onClick={() => setAdminTab('prices')} className={`w-full flex items-center gap-3 p-4 md:px-6 hover:bg-[#F9F7F2] transition-colors ${adminTab === 'prices' ? 'bg-[#F9F7F2] border-r-4 border-[#8B5E3C] text-[#5D4037]' : 'text-[#666]'}`}>
+            <Coins size={20} /> <span className="hidden md:block font-medium">Precios</span>
+          </button>
+          <button onClick={() => setAdminTab('materiales')} className={`w-full flex items-center gap-3 p-4 md:px-6 hover:bg-[#F9F7F2] transition-colors ${adminTab === 'materiales' ? 'bg-[#F9F7F2] border-r-4 border-[#8B5E3C] text-[#5D4037]' : 'text-[#666]'}`}>
+            <TreePine size={20} /> <span className="hidden md:block font-medium">Materiales</span>
+          </button>
+          <button onClick={() => setAdminTab('config')} className={`w-full flex items-center gap-3 p-4 md:px-6 hover:bg-[#F9F7F2] transition-colors ${adminTab === 'config' ? 'bg-[#F9F7F2] border-r-4 border-[#8B5E3C] text-[#5D4037]' : 'text-[#666]'}`}>
+            <Settings size={20} /> <span className="hidden md:block font-medium">General</span>
+          </button>
+        </div>
+
+        <div className="p-4 border-t border-[#E0E0E0]">
+          <button onClick={() => { signOut(auth); setIsAdmin(false); signInAnonymously(auth); }} className="w-full text-red-500 flex items-center justify-center md:justify-start gap-2 hover:bg-red-50 p-3 rounded-xl transition-colors font-bold text-sm"><LogOut size={20} /> <span className="hidden md:block">Salir</span></button>
+        </div>
       </div>
 
-      {adminTab === 'prices' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
-          {Object.entries(CATEGORIAS_COSTOS).map(([cat, keys]) => (
-            <div key={cat} className={`bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm`}>
-              <h3 className={`${THEME.accent} font-bold uppercase text-sm mb-4 border-b border-[#F2E9D8] pb-2`}>{cat}</h3>
-              <div className="space-y-4">
-                {keys.map(k => (
-                  <div key={k} className="flex justify-between items-center">
-                    <label className="text-xs text-[#666] uppercase">{k.replace(/_/g, ' ')}</label>
-                    <div className="relative w-40">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#999] text-sm">$</span>
-                      <input type="text" value={new Intl.NumberFormat('es-AR').format(costos[k])} onChange={e => handleCostoChange(k, e.target.value)} className={`w-full bg-[#FAFAFA] rounded-lg p-2 pl-8 text-right text-base font-bold text-[#333] border border-[#E0D8C3] focus:border-[#5D4037] outline-none`} />
+      {/* Main Admin Content */}
+      <div className="flex-1 ml-20 md:ml-64 p-6 md:p-10 overflow-y-auto max-h-screen">
+
+        {adminTab === 'dashboard' && (
+          <div className="space-y-6 max-w-5xl mx-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-[#333]">Dashboard</h2>
+              <a href="https://analytics.google.com/" target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[#5D4037] bg-white border border-[#5D4037] px-4 py-2 rounded-lg hover:bg-[#5D4037] hover:text-white transition-all text-sm font-bold">
+                <BarChart3 size={16} /> Ir a Google Analytics
+              </a>
+            </div>
+
+            {/* Stats Cards (Mockup visual based on local visits) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white p-6 rounded-2xl border border-[#E0E0E0] shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-[#999] text-xs font-bold uppercase tracking-wider">Visitas Totales</span>
+                  <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Globe size={20} /></div>
+                </div>
+                <div className="text-3xl font-bold text-[#333]">{visitStats.total}</div>
+                <div className="text-xs text-[#999] mt-2">Sesiones iniciadas (Demo)</div>
+              </div>
+              <div className="bg-white p-6 rounded-2xl border border-[#E0E0E0] shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-[#999] text-xs font-bold uppercase tracking-wider">Dispositivos Móviles</span>
+                  <div className="p-2 bg-purple-50 text-purple-600 rounded-lg"><Smartphone size={20} /></div>
+                </div>
+                <div className="text-3xl font-bold text-[#333]">{visitStats.mobile}</div>
+                <div className="text-xs text-[#999] mt-2">Accesos desde celular</div>
+              </div>
+              <div className="bg-white p-6 rounded-2xl border border-[#E0E0E0] shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-[#999] text-xs font-bold uppercase tracking-wider">Pedidos Nuevos</span>
+                  <div className="p-2 bg-green-50 text-green-600 rounded-lg"><ShoppingCart size={20} /></div>
+                </div>
+                <div className="text-3xl font-bold text-[#333]">0</div>
+                <div className="text-xs text-[#999] mt-2">En los últimos 7 días</div>
+              </div>
+            </div>
+
+            <div className="bg-white p-8 rounded-2xl border border-[#E0E0E0] shadow-sm flex flex-col items-center justify-center text-center py-20">
+              <PieChart size={48} className="text-[#E0E0E0] mb-4" />
+              <h3 className="text-lg font-bold text-[#666]">Visualización de Datos Avanzada</h3>
+              <p className="text-sm text-[#999] max-w-md mt-2">Para ver métricas detalladas de conversión, embudos de ventas y ubicación geográfica precisa, utiliza el enlace a Google Analytics.</p>
+            </div>
+          </div>
+        )}
+
+        {adminTab === 'reviews' && (
+          <div className="max-w-4xl mx-auto space-y-6">
+            <div className="bg-white p-6 rounded-2xl border border-[#E0E0E0] shadow-sm">
+              <h3 className="text-lg font-bold text-[#5D4037] uppercase mb-4">Agregar Nueva Reseña</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <input value={newReview.nombre} onChange={e => setNewReview({ ...newReview, nombre: e.target.value })} placeholder="Nombre Cliente" className="p-3 border border-[#E0E0E0] rounded-lg w-full" />
+                <input type="number" min="1" max="5" value={newReview.stars} onChange={e => setNewReview({ ...newReview, stars: parseInt(e.target.value) })} placeholder="Estrellas (1-5)" className="p-3 border border-[#E0E0E0] rounded-lg w-full" />
+              </div>
+              <textarea value={newReview.texto} onChange={e => setNewReview({ ...newReview, texto: e.target.value })} placeholder="Comentario del cliente..." className="p-3 border border-[#E0E0E0] rounded-lg w-full h-24 mb-4 resize-none" />
+              <button onClick={addReview} className="bg-[#5D4037] text-white px-6 py-2 rounded-lg font-bold text-sm uppercase">Guardar Reseña</button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {testimonios.map(t => (
+                <div key={t.id} className="bg-white p-4 rounded-xl border border-[#E0E0E0] relative group">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-bold text-[#333] font-sans uppercase">{t.nombre}</div>
+                      <div className="flex text-[#8B5E3C] text-xs mt-1 mb-2">{[...Array(t.stars)].map((_, i) => <Star key={i} size={12} fill="currentColor" />)}</div>
+                    </div>
+                    <button onClick={() => removeReview(t.id)} className="text-red-400 hover:text-red-600 p-2"><Trash2 size={16} /></button>
+                  </div>
+                  <p className="text-sm text-[#666] italic">"{t.texto}"</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {adminTab === 'prices' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20 max-w-5xl mx-auto">
+            {Object.entries(CATEGORIAS_COSTOS).map(([cat, keys]) => (
+              <div key={cat} className={`bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm`}>
+                <h3 className={`${THEME.accent} font-bold uppercase text-sm mb-4 border-b border-[#F2E9D8] pb-2`}>{cat}</h3>
+                <div className="space-y-4">
+                  {keys.map(k => (
+                    <div key={k} className="flex justify-between items-center">
+                      <label className="text-xs text-[#666] uppercase">{k.replace(/_/g, ' ')}</label>
+                      <div className="relative w-40">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#999] text-sm">$</span>
+                        <input type="text" value={new Intl.NumberFormat('es-AR').format(costos[k])} onChange={e => handleCostoChange(k, e.target.value)} className={`w-full bg-[#FAFAFA] rounded-lg p-2 pl-8 text-right text-base font-bold text-[#333] border border-[#E0D8C3] focus:border-[#5D4037] outline-none`} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {adminTab === 'materiales' && (
+          <div className="space-y-6 pb-20 max-w-4xl mx-auto">
+            <div className={`bg-white p-6 rounded-xl space-y-6 border border-[#E0D8C3]`}>
+              <div className="flex justify-between items-center mb-4 border-b border-[#F2E9D8] pb-4">
+                <h3 className={`${THEME.accent} font-bold uppercase text-sm`}>Gestión de Maderas</h3>
+                <button onClick={addMadera} className={`${THEME.primary} text-white p-2 rounded-lg flex items-center gap-2 px-4 font-bold text-xs`}><Plus size={16} /> AGREGAR</button>
+              </div>
+              {maderas.map((m, index) => (
+                <div key={m.id} className="flex flex-col md:flex-row gap-4 items-center bg-[#FAFAFA] p-4 rounded-xl border border-[#E0D8C3]">
+                  <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 border border-[#E0D8C3] flex items-center justify-center bg-white">
+                    <img src={getDirectDriveUrl(m.src)} className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_LOGO_SRC }} referrerPolicy="no-referrer" />
+                  </div>
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
+                    <input value={m.nombre} onChange={(e) => updateMadera(index, 'nombre', e.target.value)} placeholder="Nombre" className="bg-white p-2 rounded-lg border border-[#E0D8C3] text-sm text-[#333] focus:border-[#5D4037] outline-none" />
+                    <select value={m.tier} onChange={(e) => updateMadera(index, 'tier', e.target.value)} className="bg-white p-2 rounded-lg border border-[#E0D8C3] text-sm text-[#333] focus:border-[#5D4037] outline-none appearance-none">
+                      <option value="basica">Básica</option>
+                      <option value="intermedia">Intermedia</option>
+                      <option value="premium">Premium</option>
+                    </select>
+                    <input value={m.src} onChange={(e) => updateMadera(index, 'src', e.target.value)} placeholder="URL Foto" className="bg-white p-2 rounded-lg border border-[#E0D8C3] text-sm text-[#333] focus:border-[#5D4037] outline-none" />
+                  </div>
+                  <button onClick={() => removeMadera(m.id)} className="p-2 text-[#999] hover:text-red-500 transition-colors"><Trash2 size={20} /></button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {adminTab === 'gallery' && (
+          <div className="space-y-6 pb-20 max-w-5xl mx-auto">
+            <div className={`bg-white p-6 rounded-xl space-y-4 border border-[#E0D8C3]`}>
+              <h3 className={`${THEME.accent} font-bold uppercase text-sm`}>Agregar Nueva Foto</h3>
+              <div className="flex gap-2">
+                <input value={newImage.url} onChange={e => setNewImage({ ...newImage, url: e.target.value })} placeholder="URL de la imagen (Drive, Postimages, etc)" className="flex-1 bg-[#FAFAFA] rounded-lg p-2 text-sm text-[#333] border border-[#E0D8C3] outline-none" />
+                <input value={newImage.alt} onChange={e => setNewImage({ ...newImage, alt: e.target.value })} placeholder="Título / Descripción" className="flex-1 bg-[#FAFAFA] rounded-lg p-2 text-sm text-[#333] border border-[#E0D8C3] outline-none" />
+                <button onClick={addGalleryImage} className={`${THEME.primary} text-white p-2 rounded-lg`}><Plus /></button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {galeria.map(img => (
+                <div key={img.id} className="relative group rounded-xl overflow-hidden aspect-square border border-[#E0D8C3]">
+                  <img src={getDirectDriveUrl(img.src)} className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_LOGO_SRC }} referrerPolicy="no-referrer" />
+                  <div className="absolute inset-0 bg-white/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <button onClick={() => removeGalleryImage(img.id)} className="bg-red-500 text-white p-2 rounded-full"><Trash2 size={16} /></button>
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-6">
+                    <span className="text-white text-xs font-bold uppercase tracking-wide block truncate">{img.alt}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {adminTab === 'config' && (
+          <div className="space-y-6 pb-20 max-w-3xl mx-auto">
+            <div className={`bg-white p-8 rounded-xl space-y-6 border border-[#E0D8C3]`}>
+              <h3 className={`${THEME.accent} font-bold uppercase text-sm`}>Configuración General</h3>
+
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-bold text-[#333] mb-3">Logo Principal</label>
+                  <div className="flex items-center gap-6">
+                    <div className="w-24 h-24 border border-[#E0D8C3] rounded-lg flex items-center justify-center bg-[#FAFAFA]">
+                      <img src={getDirectDriveUrl(adminLogoInput) || DEFAULT_LOGO_SRC} alt="Logo Preview" className="max-w-full max-h-full object-contain" onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_LOGO_SRC }} referrerPolicy="no-referrer" />
+                    </div>
+                    <div className="flex-1 space-y-3">
+                      <input
+                        value={adminLogoInput}
+                        onChange={(e) => setAdminLogoInput(e.target.value)}
+                        placeholder="Pegar URL del logo aquí..."
+                        className="w-full bg-[#FAFAFA] rounded-lg p-3 text-sm text-[#333] border border-[#E0D8C3] outline-none"
+                      />
+                      <div className="flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
+                        <input
+                          type="file"
+                          ref={logoFileInputRef}
+                          onChange={handleLogoFileUpload}
+                          className="hidden"
+                          accept="image/*"
+                        />
+                        <button
+                          onClick={() => logoFileInputRef.current.click()}
+                          className={`px-4 py-2 bg-[#F5F5F5] border border-[#E0E0E0] text-[#555] rounded-lg text-xs font-bold uppercase flex items-center gap-2 hover:bg-[#E8DCCA]`}
+                        >
+                          <Upload size={14} /> Seleccionar Archivo
+                        </button>
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {adminTab === 'materiales' && (
-        <div className="space-y-6 pb-20">
-          <div className={`bg-white p-6 rounded-xl space-y-6 border border-[#E0D8C3]`}>
-            <div className="flex justify-between items-center mb-4 border-b border-[#F2E9D8] pb-4">
-              <h3 className={`${THEME.accent} font-bold uppercase text-sm`}>Gestión de Maderas</h3>
-              <button onClick={addMadera} className={`${THEME.primary} text-white p-2 rounded-lg flex items-center gap-2 px-4 font-bold text-xs`}><Plus size={16} /> AGREGAR</button>
-            </div>
-            {maderas.map((m, index) => (
-              <div key={m.id} className="flex flex-col md:flex-row gap-4 items-center bg-[#FAFAFA] p-4 rounded-xl border border-[#E0D8C3]">
-                <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 border border-[#E0D8C3] flex items-center justify-center bg-white">
-                  <img src={getDirectDriveUrl(m.src)} className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_LOGO_SRC }} />
                 </div>
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
-                  <input value={m.nombre} onChange={(e) => updateMadera(index, 'nombre', e.target.value)} placeholder="Nombre" className="bg-white p-2 rounded-lg border border-[#E0D8C3] text-sm text-[#333] focus:border-[#5D4037] outline-none" />
-                  <select value={m.tier} onChange={(e) => updateMadera(index, 'tier', e.target.value)} className="bg-white p-2 rounded-lg border border-[#E0D8C3] text-sm text-[#333] focus:border-[#5D4037] outline-none appearance-none">
-                    <option value="basica">Básica</option>
-                    <option value="intermedia">Intermedia</option>
-                    <option value="premium">Premium</option>
-                  </select>
-                  <input value={m.src} onChange={(e) => updateMadera(index, 'src', e.target.value)} placeholder="URL Foto" className="bg-white p-2 rounded-lg border border-[#E0D8C3] text-sm text-[#333] focus:border-[#5D4037] outline-none" />
-                </div>
-                <button onClick={() => removeMadera(m.id)} className="p-2 text-[#999] hover:text-red-500 transition-colors"><Trash2 size={20} /></button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {adminTab === 'gallery' && (
-        <div className="space-y-6 pb-20">
-          <div className={`bg-white p-6 rounded-xl space-y-4 border border-[#E0D8C3]`}>
-            <h3 className={`${THEME.accent} font-bold uppercase text-sm`}>Agregar Nueva Foto</h3>
-            <div className="flex gap-2">
-              <input value={newImage.url} onChange={e => setNewImage({ ...newImage, url: e.target.value })} placeholder="URL de la imagen" className="flex-1 bg-[#FAFAFA] rounded-lg p-2 text-sm text-[#333] border border-[#E0D8C3] outline-none" />
-              <input value={newImage.alt} onChange={e => setNewImage({ ...newImage, alt: e.target.value })} placeholder="Descripción" className="flex-1 bg-[#FAFAFA] rounded-lg p-2 text-sm text-[#333] border border-[#E0D8C3] outline-none" />
-              <button onClick={addGalleryImage} className={`${THEME.primary} text-white p-2 rounded-lg`}><Plus /></button>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {galeria.map(img => (
-              <div key={img.id} className="relative group rounded-xl overflow-hidden aspect-square border border-[#E0D8C3]">
-                <img src={getDirectDriveUrl(img.src)} className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_LOGO_SRC }} />
-                <div className="absolute inset-0 bg-white/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <button onClick={() => removeGalleryImage(img.id)} className="bg-red-500 text-white p-2 rounded-full"><Trash2 size={16} /></button>
-                </div>
-                <span className="absolute bottom-0 left-0 right-0 bg-white/90 text-[#333] text-[10px] p-1 text-center truncate">{img.alt}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {adminTab === 'config' && (
-        <div className="space-y-6 pb-20">
-          <div className={`bg-white p-6 rounded-xl space-y-6 border border-[#E0D8C3]`}>
-            <h3 className={`${THEME.accent} font-bold uppercase text-sm`}>Configuración General</h3>
-
-            <div className="space-y-4">
-              <label className="block text-sm font-bold text-[#333]">Logo Principal</label>
-              <div className="flex items-center gap-6">
-                <div className="w-24 h-24 border border-[#E0D8C3] rounded-lg flex items-center justify-center bg-[#FAFAFA]">
-                  <img src={getDirectDriveUrl(adminLogoInput) || DEFAULT_LOGO_SRC} alt="Logo Preview" className="max-w-full max-h-full object-contain" onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_LOGO_SRC }} />
-                </div>
-                <div className="flex-1 space-y-3">
-                  <input
-                    value={adminLogoInput}
-                    onChange={(e) => setAdminLogoInput(e.target.value)}
-                    placeholder="Pegar URL del logo aquí... (Recomendado: Postimages.org)"
-                    className="w-full bg-[#FAFAFA] rounded-lg p-3 text-sm text-[#333] border border-[#E0D8C3] outline-none"
-                  />
-                  <p className="text-[10px] text-[#999]">
-                    Tip: Para evitar errores, sube tu imagen a <a href="https://postimages.org/" target="_blank" className="underline hover:text-[#5D4037]">Postimages.org</a> y pega el "Enlace directo" aquí.
-                  </p>
-                  <div className="flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
-                    <span className="text-xs text-[#999]">O subir archivo (Máx 400KB):</span>
+                <div>
+                  <label className="block text-sm font-bold text-[#333] mb-3">Enlace de Instagram</label>
+                  <div className="flex items-center gap-2 bg-[#FAFAFA] border border-[#E0D8C3] rounded-lg p-3">
+                    <Instagram size={18} className="text-[#E1306C]" />
                     <input
-                      type="file"
-                      ref={logoFileInputRef}
-                      onChange={handleLogoFileUpload}
-                      className="hidden"
-                      accept="image/*"
+                      value={adminInstagramInput}
+                      onChange={(e) => setAdminInstagramInput(e.target.value)}
+                      placeholder="https://instagram.com/..."
+                      className="w-full bg-transparent text-sm text-[#333] outline-none"
                     />
-                    <button
-                      onClick={() => logoFileInputRef.current.click()}
-                      className={`px-4 py-2 bg-[#FAFAFA] border border-[#E0D8C3] text-[#555] rounded-lg text-xs font-bold uppercase flex items-center gap-2 hover:bg-[#E8DCCA]`}
-                    >
-                      <Upload size={14} /> Seleccionar Imagen
-                    </button>
                   </div>
+                  <p className="text-[10px] text-[#999] mt-2 ml-1">El sistema optimizará el enlace automáticamente para móviles.</p>
                 </div>
+
+                <button onClick={handleSaveSettings} className={`w-full py-4 rounded-xl ${THEME.primary} text-white font-bold uppercase text-sm mt-6 shadow-md hover:opacity-90 transition-opacity`}>Guardar Configuración</button>
               </div>
-
-              <label className="block text-sm font-bold text-[#333] mt-6">Enlace de Instagram</label>
-              <input
-                value={adminInstagramInput}
-                onChange={(e) => setAdminInstagramInput(e.target.value)}
-                placeholder="https://instagram.com/..."
-                className="w-full bg-[#FAFAFA] rounded-lg p-3 text-sm text-[#333] border border-[#E0D8C3] outline-none"
-              />
-
-              <button onClick={handleSaveSettings} className={`w-full py-3 rounded-lg ${THEME.primary} text-white font-bold uppercase text-sm mt-6 shadow-md`}>Guardar Configuración</button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {adminTab === 'orders' && <div className="text-[#999] text-center mt-20">No hay pedidos nuevos.</div>}
+        {adminTab === 'orders' && <div className="text-[#999] text-center mt-20 flex flex-col items-center"><ShoppingCart size={48} className="mb-4 opacity-20" /> No hay pedidos nuevos.</div>}
 
-      {/* Global Save Button Admin */}
-      <button onClick={() => alert("Cambios guardados")} className={`fixed bottom-6 right-6 ${THEME.primary} text-white p-4 rounded-full shadow-xl hover:scale-105 transition-transform flex items-center justify-center z-50`}>
-        <Save size={24} />
-      </button>
+        {/* Global Save Button Admin */}
+        <button onClick={() => alert("Cambios guardados")} className={`fixed bottom-6 right-6 ${THEME.primary} text-white p-4 rounded-full shadow-xl hover:scale-105 transition-transform flex items-center justify-center z-50`}>
+          <Save size={24} />
+        </button>
+      </div>
     </div>
   );
 
@@ -965,13 +1128,13 @@ const App = () => {
             <button onClick={() => setShowReviews(false)} className="absolute top-4 right-4 text-[#999] hover:text-[#333]"><X size={24} /></button>
             <h3 className={`text-xl font-bold ${THEME.accent} mb-6 text-center uppercase tracking-widest font-sans`}>Reseñas de Clientes</h3>
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-              {TESTIMONIOS.map(t => (
-                <div key={t.id} className="bg-[#FAFAFA] p-4 rounded-xl border border-[#E0D8C3]">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className={`font-bold text-sm ${THEME.textMain}`}>{t.nombre}</span>
-                    <div className="flex gap-0.5 text-[#5D4037]">{[...Array(t.stars)].map((_, i) => <Star key={i} size={12} fill="currentColor" />)}</div>
+              {testimonios.map(t => (
+                <div key={t.id} className="bg-[#FAFAFA] p-5 rounded-xl border border-[#E0D8C3]">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className={`font-bold text-base font-sans uppercase ${THEME.textMain}`}>{t.nombre}</span>
+                    <div className="flex gap-0.5 text-[#5D4037]">{[...Array(t.stars)].map((_, i) => <Star key={i} size={14} fill="currentColor" />)}</div>
                   </div>
-                  <p className={`text-xs ${THEME.textMuted} italic leading-relaxed`}>"{t.texto}"</p>
+                  <p className={`text-sm ${THEME.textMuted} italic leading-relaxed`}>"{t.texto}"</p>
                 </div>
               ))}
             </div>
@@ -994,6 +1157,7 @@ const App = () => {
                 onClick={handleAdminLogin}
                 className="w-48 h-auto mb-6 drop-shadow-md cursor-pointer opacity-90 hover:scale-105 transition-transform object-contain"
                 onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_LOGO_SRC }}
+                referrerPolicy="no-referrer"
               />
             </div>
             <div className="w-full max-w-xs md:max-w-sm space-y-4 z-10">
@@ -1020,7 +1184,7 @@ const App = () => {
           </div>
         )}
 
-        {/* CATEGORIAS (AJUSTE TAMAÑO CELULAR: grid-cols-3 para que entren en una linea o mas compactas) */}
+        {/* CATEGORIAS */}
         {paso === 1 && (
           <div className="min-h-[85vh] flex flex-col justify-center max-w-4xl mx-auto p-4 md:p-6 animate-fade-in">
             <div className="grid grid-cols-3 gap-2 md:gap-4">
@@ -1138,7 +1302,7 @@ const App = () => {
                       return (
                         <button key={m.id} onClick={() => setConfig({ ...config, material: m.id })} className={`relative h-24 rounded-xl overflow-hidden border transition-all group ${config.material === m.id ? `${THEME.accentBorder} ring-2 ring-[#5D4037] ring-offset-2 ring-offset-[#F2E9D8]` : 'border-[#E0D8C3] hover:opacity-100 opacity-90'}`}>
                           {textureData.type === 'img' ? (
-                            <img src={textureData.src} className="absolute inset-0 w-full h-full object-cover" alt={m.nombre} />
+                            <img src={textureData.src} className="absolute inset-0 w-full h-full object-cover" alt={m.nombre} referrerPolicy="no-referrer" />
                           ) : (
                             <div className="absolute inset-0" style={{ background: textureData.css }}></div>
                           )}
@@ -1229,7 +1393,7 @@ const App = () => {
             <div className="space-y-4 mb-8">
               {carrito.map(item => (
                 <div key={item.id} className={`${THEME.card} p-5 rounded-2xl flex gap-5 group relative`}>
-                  <div className={`w-20 h-20 rounded-lg bg-[#F9F7F2] flex items-center justify-center text-3xl border border-[#E0D8C3]`}>{item.mueble.imagen}</div>
+                  <div className={`w-20 h-20 rounded-lg bg-[#F9F7F2] flex items-center justify-center text-3xl border border-[#E0D8C3]}`}>{item.mueble.imagen}</div>
                   <div className="flex-1">
                     <div className="flex justify-between items-start"><h3 className={`font-bold uppercase text-lg ${THEME.textMain} font-sans`}>{item.mueble.nombre}</h3><button onClick={() => setCarrito(carrito.filter(c => c.id !== item.id))} className={`${THEME.textMuted} hover:text-red-500`}><Trash2 size={18} /></button></div>
                     <p className={`text-sm ${THEME.textMuted} mt-1`}>{item.config.ancho}x{item.config.largo}cm • {item.config.materialNombre}</p>
@@ -1314,11 +1478,19 @@ const App = () => {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-16">
               {galeria.map(img => (
                 <div key={img.id} onClick={() => setSelectedImage(img)} className="aspect-square rounded-2xl overflow-hidden cursor-pointer group relative shadow-sm hover:shadow-md transition-all border border-[#E0D8C3]">
-                  <img src={getDirectDriveUrl(img.src)} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <button onClick={() => removeGalleryImage(img.id)} className="bg-red-500 text-white p-2 rounded-full"><Trash2 size={16} /></button>
+                  <img src={getDirectDriveUrl(img.src)} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" />
+
+                  {/* SOLO ADMIN PUEDE VER EL BOTON BORRAR */}
+                  {isAdmin && (
+                    <div className="absolute top-2 right-2 bg-white/80 rounded-full p-2 z-20">
+                      <button onClick={(e) => { e.stopPropagation(); removeGalleryImage(img.id); }} className="text-red-500 hover:scale-110 transition-transform"><Trash2 size={20} /></button>
+                    </div>
+                  )}
+
+                  {/* TEXTO GRANDE Y VISIBLE */}
+                  <div className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-100 transition-opacity">
+                    <span className="text-white text-sm md:text-lg font-bold uppercase tracking-widest mb-4 px-2 text-center drop-shadow-md font-sans">{img.alt}</span>
                   </div>
-                  <span className="absolute bottom-0 left-0 right-0 bg-white/90 text-[#333] text-[10px] p-1 text-center truncate">{img.alt}</span>
                 </div>
               ))}
             </div>
@@ -1346,12 +1518,12 @@ const App = () => {
 
             <p className={`uppercase tracking-[0.3em] text-xs font-bold ${THEME.accent} mb-6`}>Carpintería de Autor</p>
 
-            <div className="bg-white/80 backdrop-blur-md p-8 rounded-2xl border border-[#E0D8C3] shadow-sm space-y-6 text-[#555] text-lg leading-relaxed font-light text-left">
-              <p><strong className={THEME.textMain}>En EBE Muebles</strong> somos un equipo dedicado al diseño y fabricación de muebles a medida de alta calidad, combinando funcionalidad, estética y durabilidad en cada proyecto. Nacemos con una visión clara: crear piezas únicas que respondan a las necesidades reales de cada cliente, respetando los espacios, los estilos y el uso cotidiano.</p>
-              <p>Nos especializamos en el desarrollo de muebles de madera maciza, hierro y combinaciones contemporáneas, trabajando con <span className={`${THEME.accent} font-medium`}>maderas reforestadas</span> provenientes de tala cuidada, seleccionadas por su resistencia, estabilidad y comportamiento a largo plazo.</p>
-              <p>Cada mueble es diseñado y fabricado de manera personalizada, acompañando al cliente desde la idea inicial hasta la entrega final, brindando asesoramiento técnico y estético en todo el proceso.</p>
-              <p>Contamos con <span className={`${THEME.accent} font-medium`}>fabricación propia</span>, lo que nos permite controlar cada etapa del proceso: diseño, selección de materiales, construcción, terminaciones e instalación.</p>
-              <p className={`italic ${THEME.textMuted} text-center mt-4 border-t border-[#E0D8C3] pt-4`}>"Nuestro propósito es transformar ideas en piezas reales, creando muebles que acompañen la vida diaria y perduren en el tiempo."</p>
+            <div className="bg-white/80 backdrop-blur-md p-8 rounded-2xl border border-[#E0D8C3] shadow-sm space-y-6 text-[#555] text-lg leading-relaxed font-light text-center">
+              <p><strong className={THEME.textMain}>En eBe Muebles</strong> nos especializamos en la carpintería con madera maciza seleccionada y reforestada, respetando la materia prima en cada corte y diseño.</p>
+              <p>Fusionamos la <span className={`${THEME.accent} font-medium`}>fuerza y estructura del hierro</span> con la calidez de lo natural, logrando piezas de alta resistencia y estética industrial o moderna.</p>
+              <p>Además, aplicamos la <span className={`${THEME.accent} font-medium`}>precisión tecnológica</span> en nuestros trabajos con MDF y melamina, garantizando terminaciones perfectas y optimización de espacios funcionales.</p>
+
+              <p className={`italic ${THEME.textMuted} mt-6 border-t border-[#E0D8C3] pt-6`}>"Más que muebles, creamos el escenario de tus mejores momentos."</p>
             </div>
 
             <div className="mt-12 flex justify-center">
@@ -1371,7 +1543,7 @@ const App = () => {
         {selectedImage && (
           <div className="fixed inset-0 z-[60] bg-[#333]/90 flex items-center justify-center p-4 animate-fade-in" onClick={() => setSelectedImage(null)}>
             <button className="absolute left-4 p-4 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm z-50 shadow-lg" onClick={prevImage}><ChevronLeft size={32} /></button>
-            <img src={getDirectDriveUrl(selectedImage.src)} className="max-w-full max-h-[85vh] rounded-xl shadow-2xl" onClick={e => e.stopPropagation()} />
+            <img src={getDirectDriveUrl(selectedImage.src)} className="max-w-full max-h-[85vh] rounded-xl shadow-2xl" onClick={e => e.stopPropagation()} referrerPolicy="no-referrer" />
             <button className="absolute right-4 p-4 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm z-50 shadow-lg" onClick={nextImage}><ChevronRight size={32} /></button>
             <button className="absolute top-4 right-4 text-white hover:text-red-500"><X size={32} /></button>
             <p className="absolute bottom-8 text-white font-bold tracking-widest uppercase bg-black/60 px-6 py-3 rounded-full backdrop-blur-md shadow-lg font-sans">{selectedImage.alt}</p>
@@ -1385,13 +1557,13 @@ const App = () => {
               <button onClick={() => setShowReviews(false)} className="absolute top-4 right-4 text-[#999] hover:text-[#333]"><X size={24} /></button>
               <h3 className={`text-xl font-bold ${THEME.accent} mb-6 text-center uppercase tracking-widest font-sans`}>Reseñas de Clientes</h3>
               <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                {TESTIMONIOS.map(t => (
-                  <div key={t.id} className="bg-[#FAFAFA] p-4 rounded-xl border border-[#E0D8C3]">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className={`font-bold text-sm ${THEME.textMain}`}>{t.nombre}</span>
-                      <div className="flex gap-0.5 text-[#5D4037]">{[...Array(t.stars)].map((_, i) => <Star key={i} size={12} fill="currentColor" />)}</div>
+                {testimonios.map(t => (
+                  <div key={t.id} className="bg-[#FAFAFA] p-5 rounded-xl border border-[#E0D8C3]">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className={`font-bold text-base font-sans uppercase ${THEME.textMain}`}>{t.nombre}</span>
+                      <div className="flex gap-0.5 text-[#5D4037]">{[...Array(t.stars)].map((_, i) => <Star key={i} size={14} fill="currentColor" />)}</div>
                     </div>
-                    <p className={`text-xs ${THEME.textMuted} italic leading-relaxed`}>"{t.texto}"</p>
+                    <p className={`text-sm ${THEME.textMuted} italic leading-relaxed`}>"{t.texto}"</p>
                   </div>
                 ))}
               </div>
