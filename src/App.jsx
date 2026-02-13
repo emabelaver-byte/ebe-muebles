@@ -28,8 +28,9 @@ const firebaseConfig = {
   measurementId: "G-4GCBZ6YWM3"
 };
 
-// 🛑 2. ID DE MEDICIÓN DE GOOGLE ANALYTICS
-const GA_MEASUREMENT_ID = "G-XXXXXXXXXX";
+// 🛑 ID DE GOOGLE TAG MANAGER Y ANALYTICS
+const GTM_ID = "GTM-NKC5JBZW";
+const GA_ID = "G-4GCBZ6YWM3"; // Tu Measurement ID de Firebase
 
 // Inicialización
 const app = initializeApp(firebaseConfig);
@@ -87,7 +88,8 @@ const ADMIN_EMAILS = [
 const DATOS_CONTACTO = {
   telefono_whatsapp: "5493547531519",
   nombre_negocio: "eBe Muebles",
-  maps_link: "https://maps.app.goo.gl/yXy8vciXoR11Z4L8A"
+  maps_link: "https://maps.app.goo.gl/yXy8vciXoR11Z4L8A",
+  ubicacion_texto: "Alta Gracia, Córdoba"
 };
 
 // --- COSTOS BASE ---
@@ -290,7 +292,7 @@ const InputMedida = ({ label, val, onChange }) => (
     <label className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${THEME.textMuted}`}>{label}</label>
     <input
       type="number" value={val} onChange={e => onChange(e.target.value)} onFocus={e => e.target.select()}
-      className={`w-full ${THEME.input} text-center text-lg md:text-xl font-light py-4 rounded-xl shadow-sm hover:border-[#5D4037]/30`}
+      className={`w-full ${THEME.input} text-center text-lg md:text-xl font-light py-4 rounded-xl shadow-sm hover:border-[#5D4037] hover:shadow-md transition-all duration-300`}
     />
   </div>
 );
@@ -361,28 +363,48 @@ const App = () => {
     return "EBE MUEBLES";
   };
 
-  // --- GOOGLE ANALYTICS INTEGRATION ---
+  // --- GOOGLE TAG MANAGER & ANALYTICS INTEGRATION ---
   useEffect(() => {
-    // Si no hay ID de medición o es el placeholder, no hacer nada
-    if (!GA_MEASUREMENT_ID || GA_MEASUREMENT_ID === "G-XXXXXXXXXX") return;
+    // 1. Google Analytics (gtag.js) Direct Injection (Para que funcione "al apretar el boton" y trackee vistas)
+    if (!document.getElementById('ga-script')) {
+      const gaScript = document.createElement('script');
+      gaScript.id = 'ga-script';
+      gaScript.async = true;
+      gaScript.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`;
+      document.head.appendChild(gaScript);
 
-    // Verificar si el script ya existe
-    if (document.getElementById('ga-script')) return;
+      const gaInitScript = document.createElement('script');
+      gaInitScript.innerHTML = `
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${GA_ID}');
+        `;
+      document.head.appendChild(gaInitScript);
+      console.log("Google Analytics Initialized:", GA_ID);
+    }
 
-    // Inyectar script de gtag.js
-    const script = document.createElement('script');
-    script.id = 'ga-script';
-    script.async = true;
-    script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
+    // 2. Google Tag Manager (GTM)
+    if (!document.getElementById('gtm-script')) {
+      const script = document.createElement('script');
+      script.id = 'gtm-script';
+      script.innerHTML = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+        new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','${GTM_ID}');`;
+      document.head.appendChild(script);
 
-    document.head.appendChild(script);
-
-    // Inicializar dataLayer
-    window.dataLayer = window.dataLayer || [];
-    function gtag() { window.dataLayer.push(arguments); }
-    gtag('js', new Date());
-    gtag('config', GA_MEASUREMENT_ID);
-
+      const noscript = document.createElement('noscript');
+      const iframe = document.createElement('iframe');
+      iframe.src = `https://www.googletagmanager.com/ns.html?id=${GTM_ID}`;
+      iframe.height = "0";
+      iframe.width = "0";
+      iframe.style.display = "none";
+      iframe.style.visibility = "hidden";
+      noscript.appendChild(iframe);
+      document.body.prepend(noscript);
+    }
   }, []);
 
   useEffect(() => {
@@ -431,6 +453,20 @@ const App = () => {
     };
     fetchSettings();
   }, []);
+
+  // KEYBOARD NAVIGATION FOR GALLERY
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!selectedImage) return;
+
+      if (e.key === 'ArrowRight') nextImage(e);
+      if (e.key === 'ArrowLeft') prevImage(e);
+      if (e.key === 'Escape') setSelectedImage(null);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedImage, galeria]); // Dependencias importantes para que funcione el next/prev
 
   const handleAdminLogin = async () => {
     const provider = new GoogleAuthProvider();
@@ -698,97 +734,318 @@ const App = () => {
     window.open(`https://wa.me/${DATOS_CONTACTO.telefono_whatsapp}?text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  // PDF GENERATOR
+  // PDF GENERATOR PROFESIONAL REVISADO
   const generarPresupuestoPDF = () => {
     const total = carrito.reduce((a, b) => a + b.precio, 0);
     const printWindow = window.open('', '_blank');
-    const fecha = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const fecha = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const idPresupuesto = Math.floor(Math.random() * 100000);
+    const logoSrc = getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC;
 
     printWindow.document.write(`
       <html>
         <head>
-          <title>Presupuesto - EBE Muebles</title>
+          <title>Presupuesto #${idPresupuesto} - EBE Muebles</title>
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Inter:wght@300;400;600&display=swap');
-            body { font-family: 'Inter', sans-serif; padding: 40px; color: #2C241F; background: #fff; }
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #5D4037; padding-bottom: 20px; margin-bottom: 30px; }
-            .logo-section img { height: 60px; object-fit: contain; }
-            .company-info { text-align: right; font-size: 12px; color: #666; }
-            h1 { font-family: 'Montserrat', sans-serif; color: #5D4037; margin: 0; font-size: 28px; text-transform: uppercase; letter-spacing: 2px; }
-            .client-info { background: #E8DCCA; padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #D6C4B0; }
-            .client-info h3 { margin-top: 0; color: #5D4037; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-            th { text-align: left; padding: 12px; background: #5D4037; color: white; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
-            td { padding: 15px 12px; border-bottom: 1px solid #eee; font-size: 14px; }
-            .item-name { font-weight: 600; color: #2C241F; }
-            .item-desc { font-size: 12px; color: #666; margin-top: 4px; }
-            .total-section { text-align: right; margin-top: 20px; border-top: 2px solid #5D4037; padding-top: 20px; }
-            .total-label { font-size: 14px; text-transform: uppercase; color: #666; }
-            .total-amount { font-size: 32px; font-weight: 700; color: #8B5E3C; font-family: 'Montserrat', sans-serif; }
-            .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 20px; }
+            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Inter:wght@300;400;500&display=swap');
+            
+            body { 
+                font-family: 'Inter', sans-serif; 
+                margin: 0; 
+                padding: 0; 
+                background: #fff; 
+                color: #333;
+                -webkit-print-color-adjust: exact; 
+            }
+            
+            .page-container {
+                max-width: 210mm;
+                margin: 0 auto;
+                padding: 40px;
+                position: relative;
+            }
+
+            /* HEADER */
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 40px;
+                border-bottom: 3px solid #5D4037;
+                padding-bottom: 20px;
+            }
+            .logo-box img {
+                height: 80px;
+                object-fit: contain;
+            }
+            .doc-info {
+                text-align: right;
+            }
+            .doc-title {
+                font-family: 'Montserrat', sans-serif;
+                font-size: 32px;
+                font-weight: 700;
+                color: #5D4037;
+                letter-spacing: 2px;
+                margin: 0;
+                text-transform: uppercase;
+            }
+            .doc-meta {
+                margin-top: 5px;
+                font-size: 14px;
+                color: #666;
+            }
+
+            /* INFO CLIENTE / EMPRESA */
+            .info-grid {
+                display: flex;
+                gap: 40px;
+                margin-bottom: 40px;
+            }
+            .info-col {
+                flex: 1;
+            }
+            .info-label {
+                font-family: 'Montserrat', sans-serif;
+                font-size: 11px;
+                font-weight: 700;
+                color: #8B5E3C;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 8px;
+                border-bottom: 1px solid #D6C4B0;
+                padding-bottom: 4px;
+                display: inline-block;
+            }
+            .info-text p {
+                margin: 3px 0;
+                font-size: 13px;
+                color: #444;
+            }
+            .info-text strong {
+                font-weight: 600;
+                color: #222;
+            }
+
+            /* TABLA */
+            .table-container {
+                margin-bottom: 30px;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            th {
+                text-align: left;
+                padding: 12px 10px;
+                background-color: #F5F1EB;
+                color: #5D4037;
+                font-family: 'Montserrat', sans-serif;
+                font-size: 11px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #D6C4B0;
+            }
+            td {
+                padding: 15px 10px;
+                border-bottom: 1px solid #eee;
+                font-size: 13px;
+                vertical-align: top;
+            }
+            .col-desc { width: 45%; }
+            .col-det { width: 35%; color: #666; font-size: 12px; }
+            .col-total { text-align: right; width: 20%; font-weight: 600; }
+            
+            .item-name { font-weight: 600; font-size: 14px; color: #222; margin-bottom: 2px; }
+            .item-sub { color: #666; font-size: 12px; font-style: italic; }
+
+            /* TOTALES */
+            .totals-section {
+                display: flex;
+                justify-content: flex-end;
+                margin-top: 20px;
+                margin-bottom: 50px;
+            }
+            .totals-box {
+                width: 300px;
+                background: #F9F7F2;
+                padding: 20px;
+                border-radius: 4px;
+                border: 1px solid #E0D8C3;
+            }
+            .total-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 10px;
+                font-size: 13px;
+                color: #666;
+            }
+            .total-final {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 15px;
+                padding-top: 15px;
+                border-top: 2px solid #5D4037;
+                font-family: 'Montserrat', sans-serif;
+                font-weight: 700;
+                font-size: 18px;
+                color: #5D4037;
+            }
+
+            /* FOOTER / LEGAL */
+            .footer {
+                margin-top: auto;
+                padding-top: 30px;
+                border-top: 1px solid #eee;
+                font-size: 10px;
+                color: #888;
+                line-height: 1.6;
+                text-align: justify;
+            }
+            .footer-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+            }
+            .footer h4 {
+                font-family: 'Montserrat', sans-serif;
+                font-size: 11px;
+                color: #333;
+                margin: 0 0 5px 0;
+            }
+
+            /* WATERMARK */
+            .watermark {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) rotate(-45deg);
+                font-size: 100px;
+                color: rgba(93, 64, 55, 0.03);
+                font-family: 'Montserrat', sans-serif;
+                font-weight: 800;
+                z-index: -1;
+                pointer-events: none;
+                white-space: nowrap;
+            }
+
             @media print {
-              body { -webkit-print-color-adjust: exact; }
+                body { margin: 0; padding: 0; }
+                .page-container { width: 100%; max-width: none; padding: 20px; }
             }
           </style>
         </head>
         <body>
-          <div class="header">
-            <div class="logo-section">
-               <img src="${getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}" alt="EBE Muebles Logo" />
-            </div>
-            <div class="company-info">
-              <p><strong>EBE Muebles</strong></p>
-              <p>Alta Gracia, Córdoba</p>
-              <p>Tel: +54 9 3547 531519</p>
-            </div>
-          </div>
-
-          <div class="client-info">
-            <h3>Datos del Cliente</h3>
-            <p><strong>Nombre:</strong> ${cliente.nombre || 'Consumidor Final'}</p>
-            <p><strong>Ubicación:</strong> ${cliente.lugar || '-'}</p>
-            <p><strong>Fecha:</strong> ${fecha}</p>
-          </div>
-
-          <h1>Detalle de Presupuesto</h1>
-          
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 50%">Producto</th>
-                <th style="width: 30%">Especificaciones</th>
-                <th style="width: 20%; text-align: right">Valor Estimado</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${carrito.map(item => `
-                <tr>
-                  <td>
-                    <div class="item-name">${item.mueble.nombre}</div>
-                    <div class="item-desc">${item.config.materialNombre}</div>
-                  </td>
-                  <td>
-                    <div style="font-size: 12px; line-height: 1.5;">
-                      ${item.config.ancho} x ${item.config.largo} cm <br/>
-                      ${item.config.acabado !== 'natural' ? `Acabado: ${item.config.acabado}` : ''}
-                      ${item.config.cantCajones > 0 ? `<br/>${item.config.cantCajones} Cajones` : ''}
+          <div class="page-container">
+            <div class="watermark">EBE MUEBLES</div>
+            
+            <!-- HEADER -->
+            <div class="header">
+                <div class="logo-box">
+                    <img src="${logoSrc}" alt="Logo EBE" />
+                </div>
+                <div class="doc-info">
+                    <h1 class="doc-title">Presupuesto</h1>
+                    <div class="doc-meta">
+                        Nº ${idPresupuesto} &nbsp;|&nbsp; Fecha: ${fecha}
                     </div>
-                  </td>
-                  <td style="text-align: right; font-weight: 600;">$${new Intl.NumberFormat('es-AR').format(item.precio)}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+                </div>
+            </div>
 
-          <div class="total-section">
-            <span class="total-label">Total Estimado</span><br/>
-            <span class="total-amount">$${new Intl.NumberFormat('es-AR').format(total)}</span>
-          </div>
+            <!-- INFO -->
+            <div class="info-grid">
+                <div class="info-col">
+                    <span class="info-label">De</span>
+                    <div class="info-text">
+                        <p><strong>${DATOS_CONTACTO.nombre_negocio}</strong></p>
+                        <p>${DATOS_CONTACTO.ubicacion_texto}</p>
+                        <p>Whatsapp: +${DATOS_CONTACTO.telefono_whatsapp}</p>
+                        <p>Instagram: @ebe.muebles</p>
+                    </div>
+                </div>
+                <div class="info-col">
+                    <span class="info-label">Para</span>
+                    <div class="info-text">
+                        <p><strong>${cliente.nombre || 'Consumidor Final'}</strong></p>
+                        <p>${cliente.lugar ? 'Ubicación: ' + cliente.lugar : ''}</p>
+                        <p>${cliente.entrega === 'taller' ? 'Modo: Retiro en Taller' : 'Modo: Envío a Domicilio'}</p>
+                    </div>
+                </div>
+            </div>
 
-          <div class="footer">
-            <p>Este documento es un presupuesto estimativo y no representa un comprobante fiscal válido.</p>
-            <p>Los precios pueden variar según disponibilidad de materiales y ajustes finales de diseño.</p>
-            <p>Gracias por elegirnos para crear tu espacio.</p>
+            <!-- TABLE -->
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="col-desc">Producto / Ítem</th>
+                            <th class="col-det">Detalles y Especificaciones</th>
+                            <th class="col-total">Importe</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${carrito.map(item => `
+                        <tr>
+                            <td>
+                                <div class="item-name">${item.mueble.nombre}</div>
+                                <div class="item-sub">${item.config.materialNombre}</div>
+                            </td>
+                            <td style="font-size: 12px; line-height: 1.5; color: #555;">
+                                • Medidas: ${item.config.ancho} x ${item.config.largo} ${item.config.profundidad ? 'x ' + item.config.profundidad : ''} cm<br/>
+                                ${item.config.acabado !== 'natural' ? `• Terminación: ${item.config.acabado.toUpperCase()}<br/>` : ''}
+                                ${item.config.cantCajones > 0 ? `• ${item.config.cantCajones} Cajones<br/>` : ''}
+                                ${item.config.cantPuertas > 0 ? `• ${item.config.cantPuertas} Puertas<br/>` : ''}
+                                ${item.config.marco ? `• Incluye Marco<br/>` : ''}
+                            </td>
+                            <td class="col-total">
+                                $${new Intl.NumberFormat('es-AR').format(item.precio)}
+                            </td>
+                        </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- TOTALS -->
+            <div class="totals-section">
+                <div class="totals-box">
+                    <div class="total-row">
+                        <span>Subtotal</span>
+                        <span>$${new Intl.NumberFormat('es-AR').format(total)}</span>
+                    </div>
+                    <div class="total-row">
+                        <span>Descuentos</span>
+                        <span>$0</span>
+                    </div>
+                    <div class="total-final">
+                        <span>TOTAL ESTIMADO</span>
+                        <span>$${new Intl.NumberFormat('es-AR').format(total)}</span>
+                    </div>
+                    <div style="text-align: right; font-size: 10px; margin-top: 5px; color: #888;">*Pesos Argentinos</div>
+                </div>
+            </div>
+
+            <!-- FOOTER LEGAL -->
+            <div class="footer">
+                <div class="footer-grid">
+                    <div>
+                        <h4>CONDICIONES COMERCIALES</h4>
+                        <p>Este presupuesto tiene una validez de <strong>10 días hábiles</strong> a partir de la fecha de emisión.</p>
+                        <p>Los costos aquí expresados deben ser <strong>corroborados por el vendedor a través de WhatsApp</strong> antes de confirmar el pedido.</p>
+                        <p>La seña congela el precio de los materiales.</p>
+                    </div>
+                    <div>
+                        <h4>TIEMPOS Y ENTREGAS</h4>
+                        <p>La entrega depende específicamente del mueble a realizar.</p>
+                        <p>Los envíos corren por cuenta y cargo del cliente, salvo indicación contraria.</p>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 30px; font-weight: 600; color: #5D4037;">
+                    GRACIAS POR ELEGIR DISEÑO ARGENTINO
+                </div>
+            </div>
+
           </div>
         </body>
       </html>
@@ -796,7 +1053,7 @@ const App = () => {
     printWindow.document.close();
     setTimeout(() => {
       printWindow.print();
-    }, 500);
+    }, 800);
   };
 
   const handleAi = async (e) => {
@@ -804,8 +1061,8 @@ const App = () => {
     setTimeout(() => { setAiResponse("Para este estilo, te recomiendo combinar Petiribí con terminación natural. Aporta una calidez inigualable y es tendencia en diseño de interiores."); setAiLoading(false); }, 1500);
   };
 
-  const nextImage = (e) => { e.stopPropagation(); setSelectedImage(galeria[(galeria.findIndex(i => i.id === selectedImage.id) + 1) % galeria.length]); };
-  const prevImage = (e) => { e.stopPropagation(); setSelectedImage(galeria[(galeria.findIndex(i => i.id === selectedImage.id) - 1 + galeria.length) % galeria.length]); };
+  const nextImage = (e) => { e && e.stopPropagation(); setSelectedImage(galeria[(galeria.findIndex(i => i.id === selectedImage.id) + 1) % galeria.length]); };
+  const prevImage = (e) => { e && e.stopPropagation(); setSelectedImage(galeria[(galeria.findIndex(i => i.id === selectedImage.id) - 1 + galeria.length) % galeria.length]); };
 
   // Admin Funcs
   const removeGalleryImage = (id) => { setGaleria(galeria.filter(g => g.id !== id)); };
@@ -910,7 +1167,7 @@ const App = () => {
             <div className="bg-white p-8 rounded-2xl border border-[#E0E0E0] shadow-sm flex flex-col items-center justify-center text-center py-20">
               <PieChart size={48} className="text-[#E0E0E0] mb-4" />
               <h3 className="text-lg font-bold text-[#666]">Visualización de Datos Avanzada</h3>
-              <p className="text-sm text-[#999] max-w-md mt-2">Para ver métricas detalladas de conversión, embudos de ventas y ubicación geográfica precisa, utiliza el enlace a Google Analytics.</p>
+              <p className="text-sm text-[#999] max-w-md mt-2">Para ver métricas detalladas de conversión, embudos de ventas y ubicación geográfica precisa, haz clic en el botón superior para abrir Google Analytics.</p>
             </div>
           </div>
         )}
@@ -1508,7 +1765,7 @@ const App = () => {
           </div>
         )}
 
-        {/* QUIENES SOMOS */}
+        {/* QUIENES SOMOS (TEXTO ACTUALIZADO Y MEJORADO) */}
         {paso === 6 && (
           <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 animate-fade-in text-center max-w-2xl mx-auto">
             <div className={`w-32 h-32 rounded-full bg-white border border-[#E0D8C3] flex items-center justify-center mb-8 shadow-sm`}>
@@ -1518,12 +1775,16 @@ const App = () => {
 
             <p className={`uppercase tracking-[0.3em] text-xs font-bold ${THEME.accent} mb-6`}>Carpintería de Autor</p>
 
-            <div className="bg-white/80 backdrop-blur-md p-8 rounded-2xl border border-[#E0D8C3] shadow-sm space-y-6 text-[#555] text-lg leading-relaxed font-light text-center">
-              <p><strong className={THEME.textMain}>En eBe Muebles</strong> nos especializamos en la carpintería con madera maciza seleccionada y reforestada, respetando la materia prima en cada corte y diseño.</p>
-              <p>Fusionamos la <span className={`${THEME.accent} font-medium`}>fuerza y estructura del hierro</span> con la calidez de lo natural, logrando piezas de alta resistencia y estética industrial o moderna.</p>
-              <p>Además, aplicamos la <span className={`${THEME.accent} font-medium`}>precisión tecnológica</span> en nuestros trabajos con MDF y melamina, garantizando terminaciones perfectas y optimización de espacios funcionales.</p>
+            <div className="bg-white/80 backdrop-blur-md p-8 rounded-2xl border border-[#E0D8C3] shadow-sm space-y-6 text-[#1a1a1a] text-lg leading-relaxed font-light text-center">
+              <p>En <strong className="font-bold">eBe Muebles</strong> nos apasiona trabajar con <strong className="font-bold">madera maciza</strong> cuidadosamente seleccionada y proveniente de fuentes <strong className="font-bold">reforestadas</strong>. Cada corte, cada detalle, se realiza con profundo respeto por la materia prima y por la naturaleza que nos la entrega.</p>
 
-              <p className={`italic ${THEME.textMuted} mt-6 border-t border-[#E0D8C3] pt-6`}>"Más que muebles, creamos el escenario de tus mejores momentos."</p>
+              <p>Combinamos la robustez y carácter del <strong className="font-bold">hierro</strong> con la calidez y vida de la <strong className="font-bold">madera natural</strong>, dando vida a piezas de gran resistencia que transmiten una estética industrial o moderna, siempre elegante y atemporal.</p>
+
+              <p>Además, ponemos toda nuestra precisión y tecnología al servicio del <strong className="font-bold">MDF y la melamina</strong>, logrando terminaciones impecables y soluciones que aprovechan al máximo cada centímetro, creando espacios funcionales, cómodos y pensados para vos.</p>
+
+              <p>Más que muebles, creamos el escenario donde se escriben tus mejores momentos: reuniones con amigos, desayunos en familia, tardes de trabajo inspiradas o simplemente el placer de llegar a casa.</p>
+
+              <p className={`italic ${THEME.textMuted} mt-6 border-t border-[#E0D8C3] pt-6`}>Te invitamos a descubrir piezas hechas con <strong className="font-bold text-[#8B5E3C]">dedicación, diseño y mucho cariño.</strong> 💛🪵</p>
             </div>
 
             <div className="mt-12 flex justify-center">
@@ -1539,7 +1800,7 @@ const App = () => {
           </div>
         )}
 
-        {/* Modal Imagen Galeria */}
+        {/* Modal Imagen Galeria (CON FLECHAS DEL TECLADO) */}
         {selectedImage && (
           <div className="fixed inset-0 z-[60] bg-[#333]/90 flex items-center justify-center p-4 animate-fade-in" onClick={() => setSelectedImage(null)}>
             <button className="absolute left-4 p-4 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm z-50 shadow-lg" onClick={prevImage}><ChevronLeft size={32} /></button>
