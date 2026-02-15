@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import {
-  getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, updateDoc
+  getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, updateDoc, writeBatch, getDocs, limit
 } from 'firebase/firestore';
 import {
   Ruler, TreePine, Palette, Send, ShoppingCart, Plus, Trash2, Settings,
@@ -10,8 +10,8 @@ import {
   Armchair, Sun, CloudRain, Hammer, Monitor, Tv, Bed, Utensils, Archive,
   RectangleVertical, Box, LogOut, Save, Coins, ImagePlus, Lock, MapPin,
   User, Paperclip, X, Check, Table, DoorOpen, ArrowLeft, Truck, Store, Map, Users,
-  Square, Circle, Triangle, Info, Star, Edit3, FileText, Download, MessageCircle, Instagram, Upload,
-  BarChart3, PieChart, ExternalLink, Smartphone, Globe, Grid
+  Square, Triangle, Star, FileText, MessageCircle, Instagram, Upload,
+  BarChart3, PieChart, Smartphone, Globe, Grid, RefreshCw, Phone, Mail, Navigation, Info
 } from 'lucide-react';
 
 // ==============================================================================
@@ -28,18 +28,13 @@ const userFirebaseConfig = {
   measurementId: "G-4GCBZ6YWM3"
 };
 
-// Configuración dinámica (Prioriza entorno Canvas para evitar errores de CORS/Auth)
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userFirebaseConfig;
+const APP_ID_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'ebe-muebles-prod-v4';
 
-// ID DE APP DINÁMICO (CRÍTICO PARA PERMISOS)
-const APP_ID_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'ebe-muebles-prod-v1';
-
-// Inicialización
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// --- UTILIDAD: CONVERTIDOR DE LINKS ---
 const getDirectDriveUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('data:image')) return url;
@@ -49,18 +44,17 @@ const getDirectDriveUrl = (url) => {
   return url;
 };
 
-// --- COLORES Y ESTILOS (TU TEMA ORIGINAL "DARK ROAST") ---
 const THEME = {
-  bg: "bg-[#E8DCCA]", // Beige Arena (Fondo Original)
+  bg: "bg-[#E8DCCA]",
   card: "bg-white border border-[#D6C4B0] shadow-sm",
   cardHover: "hover:border-[#5D4037] hover:shadow-md transition-all duration-500 ease-out",
   accent: "text-[#8B5E3C]",
   accentBg: "bg-[#8B5E3C]",
   accentBorder: "border-[#8B5E3C]",
-  primary: "bg-[#5D4037]", // Marrón Café Intenso
+  primary: "bg-[#5D4037]",
   primaryText: "text-[#5D4037]",
   primaryHover: "hover:bg-[#3E2723]",
-  secondary: "bg-[#7A8D6F]", // Verde Oliva Suave
+  secondary: "bg-[#7A8D6F]",
   secondaryText: "text-[#7A8D6F]",
   textMain: "text-[#2C241F]",
   textMuted: "text-[#6B5A4E]",
@@ -78,7 +72,7 @@ const DATOS_CONTACTO = {
   ubicacion_texto: "Alta Gracia, Córdoba"
 };
 
-// --- DATOS DEFINIDOS (Persistencia Default) ---
+// --- DEFAULTS ---
 const DEFAULT_COSTOS = {
   madera_basica: 8500, madera_intermedia: 9700, madera_premium: 11000,
   madera_p_ext_basica: 13500, madera_p_ext_intermedia: 14500, madera_p_ext_premium: 16000,
@@ -120,57 +114,80 @@ const DEFAULT_TESTIMONIOS = [
 ];
 
 const DEFAULT_MADERAS = [
-  { id: 'eucalipto', nombre: 'Eucalipto', tier: 'basica', src: "https://images.unsplash.com/photo-1626071465992-0081e3532f3c?q=80&w=400&auto=format&fit=crop" },
-  { id: 'guayubira', nombre: 'Guayubira', tier: 'intermedia', src: "https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?q=80&w=400&auto=format&fit=crop" },
-  { id: 'guayca', nombre: 'Guayca', tier: 'intermedia', src: "https://images.unsplash.com/photo-1604871000636-074fa5117945?q=80&w=400&auto=format&fit=crop" },
-  { id: 'zoyta', nombre: 'Zoyta', tier: 'intermedia', src: "https://images.unsplash.com/photo-1546484396-fb3fc6f95f98?q=80&w=400&auto=format&fit=crop" },
-  { id: 'cedro', nombre: 'Cedro', tier: 'intermedia', src: "https://images.unsplash.com/photo-1596633605700-1efc9b49e277?q=80&w=400&auto=format&fit=crop" },
-  { id: 'petiribi', nombre: 'Petiribí', tier: 'premium', src: "https://images.unsplash.com/photo-1541123638804-61f7adb9dbad?q=80&w=400&auto=format&fit=crop" },
+  { id: 'kiri', nombre: 'Kiri', tier: 'basica', src: "https://i.postimg.cc/zvnLjGQ1/Kiri-textura.png" },
+  { id: 'paraiso', nombre: 'Paraíso', tier: 'basica', src: "https://i.postimg.cc/J0wDZkpm/Paraiso-textura.png" },
+  { id: 'zoita', nombre: 'Zoita', tier: 'intermedia', src: "https://i.postimg.cc/8chFHzYP/Zoita-textura.png" },
+  { id: 'cedro', nombre: 'Cedro', tier: 'intermedia', src: "https://i.postimg.cc/MZRjx9pD/Cedro-textura.png" },
+  { id: 'guayubira', nombre: 'Guayubira', tier: 'intermedia', src: "https://i.postimg.cc/1XpgH3d1/Guayubira-textura.png" },
+  { id: 'laurel', nombre: 'Laurel', tier: 'intermedia', src: "https://i.postimg.cc/tJh154cy/Laurel-textura.png" },
+  { id: 'petiribi', nombre: 'Petiribí', tier: 'premium', src: "https://i.postimg.cc/SQ8zqgxf/Petiribi-textura.png" },
 ];
 
-// --- NUEVO CATÁLOGO DE MELAMINAS ---
-const MELAMINAS_OPCIONES = {
-  lisos: [
-    { id: 'm_blanco', nombre: 'Blanco', css: '#FFFFFF' },
-    { id: 'm_ceniza', nombre: 'Ceniza', css: '#BDBDBD' },
-    { id: 'm_grafito', nombre: 'Grafito', css: '#37474F' },
-    { id: 'm_negro_profundo', nombre: 'Negro Profundo', css: '#101010' },
-    { id: 'm_gris_humo', nombre: 'Gris Humo', css: '#9E9E9E' },
-    { id: 'm_almendra', nombre: 'Almendra', css: '#E6DCC3' },
-    { id: 'm_aluminio', nombre: 'Aluminio', css: '#A0A0A0' },
-    { id: 'm_litio', nombre: 'Litio', css: '#8D867D' },
-    { id: 'm_blanco_tundra', nombre: 'Blanco Tundra', css: '#F0F0F0' },
-  ],
-  maderas_clasicas: [ // Nature y Mesopotamia
-    { id: 'm_caju', nombre: 'Cajú', css: '#B8A47E' },
-    { id: 'm_gaudi', nombre: 'Gaudí', css: '#5D4B3F' },
-    { id: 'm_petiribi', nombre: 'Petiribí', css: '#8A6F45' },
-    { id: 'm_yute', nombre: 'Yute', css: '#948C78' },
-    { id: 'm_terracota', nombre: 'Terracota', css: '#6E4D3A' },
-    { id: 'm_kiri', nombre: 'Kiri', css: '#DCCBB2' },
-    { id: 'm_paraiso', nombre: 'Paraíso', css: '#C29F76' },
-    { id: 'm_nogal_terracota', nombre: 'Nogal Terracota', css: '#8B6B40' },
-    { id: 'm_carvalho_mezzo', nombre: 'Carvalho Mezzo', css: '#7A6553' },
-  ],
-  maderas_nordicas: [ // Nordica y Etnica
-    { id: 'm_helsinki', nombre: 'Helsinki', css: 'linear-gradient(90deg, #D7CFC4, #C9BEB0)' },
-    { id: 'm_baltico', nombre: 'Báltico', css: 'linear-gradient(90deg, #8C8479, #756D63)' },
-    { id: 'm_olmo_finlandes', nombre: 'Olmo Finlandés', css: 'linear-gradient(90deg, #C19A6B, #A67C52)' },
-    { id: 'm_roble_escandinavo', nombre: 'Roble Escandinavo', css: 'linear-gradient(90deg, #C2B299, #AFA089)' },
-    { id: 'm_sahara', nombre: 'Sahara', css: '#A3927F' },
-    { id: 'm_himalaya', nombre: 'Himalaya', css: '#B09A8B' },
-    { id: 'm_everest', nombre: 'Everest', css: '#D1D5D2' },
-  ],
-  texturas_urbanas: [ // Urban e Hilados
-    { id: 'm_seda_giorno', nombre: 'Seda Giorno', css: '#B0AB9F' },
-    { id: 'm_seda_notte', nombre: 'Seda Notte', css: '#7A726A' },
-    { id: 'm_lino_chiaro', nombre: 'Lino Chiaro', css: '#CFCBC5' },
-    { id: 'm_coliseo', nombre: 'Coliseo', css: '#6E665F' },
-    { id: 'm_moscu', nombre: 'Moscú', css: '#4A3F39' },
-    { id: 'm_street', nombre: 'Street', css: '#8C837B' },
-    { id: 'm_praga', nombre: 'Praga', css: '#9C8C7C' },
-  ]
-};
+const DEFAULT_MELAMINAS_DB = [
+  { id: 'm_ceniza', nombre: 'Ceniza', css: '#BDBDBD', category: 'lisos' },
+  { id: 'm_grafito', nombre: 'Grafito', css: '#37474F', category: 'lisos' },
+  { id: 'm_negro_profundo', nombre: 'Negro Profundo', css: '#101010', category: 'lisos' },
+  { id: 'm_gris_humo', nombre: 'Gris Humo', css: '#9E9E9E', category: 'lisos' },
+  { id: 'm_almendra', nombre: 'Almendra', css: '#E6DCC3', category: 'lisos' },
+  { id: 'm_aluminio', nombre: 'Aluminio', css: '#A0A0A0', category: 'lisos' },
+  { id: 'm_litio', nombre: 'Litio', css: '#8D867D', category: 'lisos' },
+  { id: 'm_blanco', nombre: 'Blanco', css: '#FFFFFF', category: 'lisos' },
+  { id: 'm_blanco_tundra', nombre: 'Blanco Tundra', css: '#F0F0F0', category: 'lisos' },
+  { id: 'm_caju', nombre: 'Cajú', css: '#B8A47E', category: 'nature' },
+  { id: 'm_gaudi', nombre: 'Gaudí', css: '#5D4B3F', category: 'nature' },
+  { id: 'm_mont_blanc', nombre: 'Mont Blanc', css: '#D4CFC9', category: 'nature' },
+  { id: 'm_teka_artico', nombre: 'Teka Ártico', css: '#E0E0E0', category: 'nature' },
+  { id: 'm_venezia', nombre: 'Venezia', css: '#D7D7D7', category: 'nature' },
+  { id: 'm_nogal_terracota', nombre: 'Nogal Terracota', css: '#8B6B40', category: 'nature' },
+  { id: 'm_carvalho_mezzo', nombre: 'Carvalho Mezzo', css: '#7A6553', category: 'nature' },
+  { id: 'm_nocce_milano', nombre: 'Nocce Milano', css: '#5C4033', category: 'nature' },
+  { id: 'm_blanco_nature', nombre: 'Blanco Nature', css: '#F5F5F5', category: 'nature' },
+  { id: 'm_petiribi_meso', nombre: 'Petiribí', css: '#8A6F45', category: 'mesopotamia' },
+  { id: 'm_yute', nombre: 'Yute', css: '#948C78', category: 'mesopotamia' },
+  { id: 'm_terracota', nombre: 'Terracota', css: '#6E4D3A', category: 'mesopotamia' },
+  { id: 'm_gris_caliza', nombre: 'Gris Caliza', css: '#9E9E9E', category: 'mesopotamia' },
+  { id: 'm_gris_basalto', nombre: 'Gris Basalto', css: '#757575', category: 'mesopotamia' },
+  { id: 'm_gris_tapir', nombre: 'Gris Tapir', css: '#8D8D8D', category: 'mesopotamia' },
+  { id: 'm_amatista', nombre: 'Amatista', css: '#9C8AA5', category: 'mesopotamia' },
+  { id: 'm_jade', nombre: 'Jade', css: '#7A8B7D', category: 'mesopotamia' },
+  { id: 'm_kiri_meso', nombre: 'Kiri', css: '#DCCBB2', category: 'mesopotamia' },
+  { id: 'm_paraiso_meso', nombre: 'Paraíso', css: '#C29F76', category: 'mesopotamia' },
+  { id: 'm_tribal', nombre: 'Tribal', css: '#6D605B', category: 'etnica' },
+  { id: 'm_sahara', nombre: 'Sahara', css: '#A3927F', category: 'etnica' },
+  { id: 'm_tuareg', nombre: 'Tuareg', css: '#1A242E', category: 'etnica' },
+  { id: 'm_himalaya', nombre: 'Himalaya', css: '#B09A8B', category: 'etnica' },
+  { id: 'm_safari', nombre: 'Safari', css: '#4B533E', category: 'etnica' },
+  { id: 'm_everest', nombre: 'Everest', css: '#D1D5D2', category: 'etnica' },
+  { id: 'm_seda_giorno', nombre: 'Seda Giorno', css: '#B0AB9F', category: 'hilados' },
+  { id: 'm_seda_notte', nombre: 'Seda Notte', css: '#7A726A', category: 'hilados' },
+  { id: 'm_seda_azzurra', nombre: 'Seda Azzurra', css: '#1B2E45', category: 'hilados' },
+  { id: 'm_lino_chiaro', nombre: 'Lino Chiaro', css: '#CFCBC5', category: 'hilados' },
+  { id: 'm_lino_blanco', nombre: 'Lino Blanco', css: '#EAEAEA', category: 'hilados' },
+  { id: 'm_lino_terra', nombre: 'Lino Terra', css: '#5E544A', category: 'hilados' },
+  { id: 'm_lino_negro', nombre: 'Lino Negro', css: '#1C1C1C', category: 'hilados' },
+  { id: 'm_coliseo', nombre: 'Coliseo', css: '#6E665F', category: 'urban' },
+  { id: 'm_amberes', nombre: 'Amberes', css: '#2C2E33', category: 'urban' },
+  { id: 'm_viena', nombre: 'Viena', css: '#9E9E93', category: 'urban' },
+  { id: 'm_moscu', nombre: 'Moscú', css: '#4A3F39', category: 'urban' },
+  { id: 'm_praga', nombre: 'Praga', css: '#9C8C7C', category: 'urban' },
+  { id: 'm_street', nombre: 'Street', css: '#8C837B', category: 'urban' },
+  { id: 'm_home', nombre: 'Home', css: '#A8A49E', category: 'urban' },
+  { id: 'm_helsinki', nombre: 'Helsinki', css: 'linear-gradient(90deg, #D7CFC4, #C9BEB0)', category: 'nordica' },
+  { id: 'm_baltico', nombre: 'Báltico', css: 'linear-gradient(90deg, #8C8479, #756D63)', category: 'nordica' },
+  { id: 'm_olmo_finlandes', nombre: 'Olmo Finlandés', css: 'linear-gradient(90deg, #C19A6B, #A67C52)', category: 'nordica' },
+  { id: 'm_roble_escandinavo', nombre: 'Roble Escandinavo', css: 'linear-gradient(90deg, #C2B299, #AFA089)', category: 'nordica' },
+  { id: 'm_teka_oslo', nombre: 'Teka Oslo', css: '#594132', category: 'nordica' },
+];
+
+const CATEGORIAS_MELAMINA = [
+  { id: 'lisos', label: 'Línea Lisos' },
+  { id: 'nature', label: 'Línea Nature' },
+  { id: 'nordica', label: 'Línea Nórdica' },
+  { id: 'mesopotamia', label: 'Línea Mesopotamia' },
+  { id: 'etnica', label: 'Línea Étnica' },
+  { id: 'hilados', label: 'Línea Hilados' },
+  { id: 'urban', label: 'Línea Urban Concept' }
+];
 
 const MATERIAL_PUERTA_CHAPA = { id: 'puerta_chapa_iny', nombre: 'Chapa Inyectada', type: 'chapa_inyectada', precio: 0, textura: { type: 'css', css: 'linear-gradient(135deg, #374151, #4B5563)' } };
 const MATERIAL_PUERTA_PLACA = { id: 'puerta_placa_std', nombre: 'Puerta Placa', type: 'puerta_placa', precio: 0, textura: { type: 'img', src: '' } };
@@ -199,7 +216,6 @@ const CATEGORIAS_PRINCIPALES = [
   { id: 'cat_muebles', label: 'Mobiliario', icon: 'Armchair', destino: 'lista' }
 ];
 
-// --- PATAS ACTUALIZADAS (SOLUCIÓN ICONOS) ---
 const OPCIONES_PATAS = {
   sin_patas: [{ id: 'ninguna', nombre: 'Sin Patas', icon: Box }],
   madera: [
@@ -238,17 +254,15 @@ const ACABADOS_CHAPA = [
 
 const GlobalStyles = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700;800&display=swap');
     
     body { font-family: 'Inter', sans-serif; background-color: #E8DCCA; }
     h1, h2, h3, h4, h5, h6 { font-family: 'Montserrat', sans-serif; }
       
     @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-5px); } 100% { transform: translateY(0px); } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-      
     .animate-float { animation: float 6s ease-in-out infinite; }
     .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
-      
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: #E8DCCA; }
     ::-webkit-scrollbar-thumb { background: #8B5E3C; border-radius: 2px; }
@@ -271,13 +285,12 @@ const Header = ({ onBack, title, onLogoClick, showCart, cartCount, onCartClick, 
           <ArrowLeft size={22} />
         </button>
       )}
-      {/* TIPOGRAFÍA TÍTULO MEJORADA */}
-      <h1 className={`text-lg md:text-xl font-light tracking-widest ${THEME.textMain} truncate max-w-[200px] md:max-w-none font-sans uppercase`}>{title}</h1>
+      <h1 className={`text-lg md:text-xl font-bold tracking-tight ${THEME.textMain} truncate max-w-[200px] md:max-w-none font-sans uppercase`}>{title}</h1>
     </div>
     <div className="flex items-center gap-4">
       {showCart && (
         <button onClick={onCartClick} className={`relative p-2 ${THEME.textMain} hover:${THEME.accent} transition-colors`}>
-          <ShoppingCart size={22} />
+          <ShoppingCart size={28} />
           {cartCount > 0 && <span className={`absolute -top-1 -right-1 w-4 h-4 ${THEME.primary} text-white text-[10px] font-bold flex items-center justify-center rounded-full shadow-sm`}>{cartCount}</span>}
         </button>
       )}
@@ -305,10 +318,31 @@ const InputMedida = ({ label, val, onChange }) => (
     <label className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${THEME.textMuted}`}>{label}</label>
     <input
       type="number" value={val} onChange={e => onChange(e.target.value)} onFocus={e => e.target.select()}
-      className={`w-full ${THEME.input} text-center text-lg md:text-xl font-light py-4 rounded-xl shadow-sm hover:border-[#5D4037] hover:shadow-md transition-all duration-300`}
+      className={`w-full ${THEME.input} text-center text-lg md:text-xl font-medium py-4 rounded-xl shadow-sm hover:border-[#5D4037] hover:shadow-md transition-all duration-300`}
     />
   </div>
 );
+
+// --- HELPER PARA OBTENER ESTILO VISUAL DEL MATERIAL ---
+const getMaterialVisual = (config, maderas, melaminas) => {
+  // Caso 1: Chapa Inyectada
+  if (config.tipoConstruccion === 'chapa_inyectada') {
+    const color = COLORES_CHAPA.find(c => c.id === config.chapa_color);
+    return { type: 'css', value: color ? color.css : '#000' };
+  }
+  // Caso 2: Puerta Placa
+  if (config.tipoConstruccion === 'puerta_placa') {
+    return { type: 'img', value: maderas[0]?.src || '' }; // Usa madera básica por defecto
+  }
+  // Caso 3: Melamina
+  if (config.material && config.material.startsWith('m_')) {
+    const melamina = melaminas.find(m => m.id === config.material);
+    return { type: 'css', value: melamina ? melamina.css : '#fff' };
+  }
+  // Caso 4: Madera Maciza
+  const madera = maderas.find(m => m.id === config.material);
+  return { type: 'img', value: madera ? madera.src : '' };
+};
 
 // ==============================================================================
 //  3. APP PRINCIPAL
@@ -320,28 +354,32 @@ const App = () => {
   const [adminTab, setAdminTab] = useState('dashboard');
   const [user, setUser] = useState(null);
 
-  // ESTADOS PERSISTENTES
+  // DATOS PERSISTENTES
   const [costos, setCostos] = useState(DEFAULT_COSTOS);
   const [galeria, setGaleria] = useState(DEFAULT_GALERIA);
   const [maderas, setMaderas] = useState(DEFAULT_MADERAS);
+  const [melaminas, setMelaminas] = useState(DEFAULT_MELAMINAS_DB);
   const [testimonios, setTestimonios] = useState(DEFAULT_TESTIMONIOS);
   const [logoUrl, setLogoUrl] = useState(DEFAULT_LOGO_SRC);
   const [instagramUrl, setInstagramUrl] = useState(DEFAULT_INSTAGRAM_URL);
+  const [aboutUsImageUrl, setAboutUsImageUrl] = useState('');
 
+  const [ordersList, setOrdersList] = useState([]);
   const [visitStats, setVisitStats] = useState({ mobile: 0, desktop: 0, total: 0 });
-  const [orders, setOrders] = useState([]);
   const [carrito, setCarrito] = useState([]);
 
-  // Admin
+  // Admin Inputs
   const [newImage, setNewImage] = useState({ url: '', alt: '' });
   const [adminLogoInput, setAdminLogoInput] = useState('');
   const [adminInstagramInput, setAdminInstagramInput] = useState('');
+  const [adminAboutUsImageInput, setAdminAboutUsImageInput] = useState('');
+  const [newMelamina, setNewMelamina] = useState({ nombre: '', css: '#ffffff', category: 'lisos', isGradient: false });
 
-  // Flow
+  // Flow State
   const [catSeleccionada, setCatSeleccionada] = useState(null);
   const [muebleSeleccionado, setMuebleSeleccionado] = useState(null);
 
-  // Configuración Mueble
+  // Config State
   const [config, setConfig] = useState({
     ancho: 160, largo: 80, profundidad: 40, cantidad: 1,
     material: 'eucalipto', acabado: 'natural', tipoPatas: 'sin_patas', modeloPatas: 'ninguna',
@@ -349,7 +387,7 @@ const App = () => {
     chapa_color: 'negro', chapa_acabado: 'satinado', tvSize: ''
   });
 
-  const [cliente, setCliente] = useState({ nombre: '', lugar: '', nombreArchivo: null, entrega: 'envio' });
+  const [cliente, setCliente] = useState({ nombre: '', lugar: '', nombreArchivo: null, entrega: 'envio', telefono: '' });
   const [precioItemActual, setPrecioItemActual] = useState(0);
   const [espesorVisual, setEspesorVisual] = useState('');
   const [materialesPosibles, setMaterialesPosibles] = useState([]);
@@ -371,11 +409,21 @@ const App = () => {
     if (paso === 5) return "Galería";
     if (paso === 4) return "Tu Pedido";
     if (paso === 6) return "Nosotros";
+    if (paso === 7) return "Contacto";
     if (paso === 3 && muebleSeleccionado) return muebleSeleccionado.nombre;
     if (paso === 2 && catSeleccionada) return catSeleccionada.label;
     if (paso === 1) return "Categorías";
     return "EBE MUEBLES";
   };
+
+  const melaminasGrouped = useMemo(() => {
+    const grouped = {};
+    melaminas.forEach(m => {
+      if (!grouped[m.category]) grouped[m.category] = [];
+      grouped[m.category].push(m);
+    });
+    return grouped;
+  }, [melaminas]);
 
   // --- AUTH & DATA SYNC ---
   useEffect(() => {
@@ -389,11 +437,10 @@ const App = () => {
     return onAuthStateChanged(auth, setUser);
   }, []);
 
-  // Cargar datos reales de Firestore (Con fallback a Default si está vacío o falla)
+  // CARGAR DATOS FIRESTORE
   useEffect(() => {
     if (!user) return;
 
-    // 1. Configuración General
     const loadSettings = async () => {
       try {
         const docSnap = await getDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'settings', 'general'));
@@ -401,38 +448,43 @@ const App = () => {
           const d = docSnap.data();
           if (d.logoUrl) { setLogoUrl(d.logoUrl); setAdminLogoInput(d.logoUrl); }
           if (d.instagramUrl) { setInstagramUrl(d.instagramUrl); setAdminInstagramInput(d.instagramUrl); }
+          if (d.aboutUsImageUrl) { setAboutUsImageUrl(d.aboutUsImageUrl); setAdminAboutUsImageInput(d.aboutUsImageUrl); }
         }
       } catch (e) { console.error("Error conf", e); }
     };
     loadSettings();
 
-    // 2. Galería (Realtime con Error Handler)
     const unsubGaleria = onSnapshot(query(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'gallery'), orderBy('createdAt', 'desc')),
-      (snap) => {
-        if (!snap.empty) {
-          const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          setGaleria(items);
-        }
-      },
+      (snap) => { if (!snap.empty) setGaleria(snap.docs.map(d => ({ id: d.id, ...d.data() }))); },
       (error) => { console.warn("Galeria fallback", error); setGaleria(DEFAULT_GALERIA); }
     );
 
-    // 3. Maderas (Realtime con Error Handler)
     const unsubMaderas = onSnapshot(query(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'materials'), orderBy('nombre')),
-      (snap) => {
-        if (!snap.empty) {
-          const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          setMaderas(items);
-        }
-      },
+      (snap) => { if (!snap.empty) setMaderas(snap.docs.map(d => ({ id: d.id, ...d.data() }))); },
       (error) => { console.warn("Maderas fallback", error); setMaderas(DEFAULT_MADERAS); }
     );
 
-    return () => { unsubGaleria(); unsubMaderas(); };
-  }, [user]);
+    const unsubMelaminas = onSnapshot(query(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'melamines'), orderBy('nombre')),
+      (snap) => { if (!snap.empty) setMelaminas(snap.docs.map(d => ({ id: d.id, ...d.data() }))); },
+      (error) => { console.warn("Melaminas fallback", error); setMelaminas(DEFAULT_MELAMINAS_DB); }
+    );
+
+    const unsubCostos = onSnapshot(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'settings', 'costos'),
+      (snap) => { if (snap.exists()) setCostos(snap.data()); }
+    );
+
+    let unsubOrders = () => { };
+    if (isAdmin) {
+      unsubOrders = onSnapshot(query(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'orders'), orderBy('createdAt', 'desc')),
+        (snap) => { setOrdersList(snap.docs.map(d => ({ id: d.id, ...d.data() }))); }
+      );
+    }
+
+    return () => { unsubGaleria(); unsubMaderas(); unsubMelaminas(); unsubCostos(); unsubOrders(); };
+  }, [user, isAdmin]);
 
 
-  // --- ADMIN ACTIONS (Escritura Real en Firestore) ---
+  // --- ADMIN ACTIONS ---
   const handleAdminLogin = async () => {
     const provider = new GoogleAuthProvider();
     try {
@@ -447,7 +499,8 @@ const App = () => {
     try {
       await setDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'settings', 'general'), {
         logoUrl: getDirectDriveUrl(adminLogoInput) || DEFAULT_LOGO_SRC,
-        instagramUrl: adminInstagramInput || DEFAULT_INSTAGRAM_URL
+        instagramUrl: adminInstagramInput || DEFAULT_INSTAGRAM_URL,
+        aboutUsImageUrl: getDirectDriveUrl(adminAboutUsImageInput)
       }, { merge: true });
       alert("Configuración guardada correctamente.");
     } catch (e) { alert("Error al guardar: " + e.message); }
@@ -457,43 +510,60 @@ const App = () => {
     if (newImage.url && isAdmin) {
       try {
         await addDoc(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'gallery'), {
-          src: getDirectDriveUrl(newImage.url),
-          alt: newImage.alt || 'Nuevo Trabajo',
-          createdAt: Date.now()
+          src: getDirectDriveUrl(newImage.url), alt: newImage.alt || 'Nuevo Trabajo', createdAt: Date.now()
         });
         setNewImage({ url: '', alt: '' });
-        alert("Imagen guardada.");
       } catch (e) { alert("Error: " + e.message); }
     }
   };
 
-  const removeGalleryImage = async (id) => {
+  const removeGalleryImage = async (id) => { if (isAdmin && typeof id === 'string') await deleteDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'gallery', id)); };
+
+  const addMelamina = async () => {
     if (!isAdmin) return;
-    if (typeof id === 'string') {
-      try { await deleteDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'gallery', id)); } catch (e) { console.error(e); }
-    } else {
-      setGaleria(galeria.filter(g => g.id !== id));
-    }
+    if (!newMelamina.nombre) return alert("Falta nombre");
+    try {
+      await addDoc(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'melamines'), {
+        ...newMelamina,
+        id: `m_${Date.now()}`,
+        createdAt: Date.now()
+      });
+      setNewMelamina({ nombre: '', css: '#ffffff', category: 'lisos', isGradient: false });
+    } catch (e) { console.error(e); }
   };
 
-  const addMadera = async () => {
+  const deleteMelamina = async (id) => { if (isAdmin) await deleteDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'melamines', id)); }
+
+  const restaurarMelaminasDefault = async () => {
     if (!isAdmin) return;
-    try { await addDoc(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'materials'), { nombre: 'Nueva Madera', tier: 'intermedia', src: '', createdAt: Date.now() }); } catch (e) { console.error(e); }
+    if (!confirm("Esto borrará las melaminas actuales y cargará las por defecto. ¿Seguro?")) return;
+    const batch = writeBatch(db);
+    melaminas.forEach(m => {
+      if (m.id && typeof m.id === 'string' && m.id.length > 15) {
+        const ref = doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'melamines', m.id);
+        batch.delete(ref);
+      }
+    });
+    DEFAULT_MELAMINAS_DB.forEach(m => {
+      const ref = doc(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'melamines'));
+      batch.set(ref, m);
+    });
+    await batch.commit();
   };
 
-  const updateMaderaFirestore = async (id, field, value) => {
-    if (!isAdmin) return;
-    if (typeof id === 'string') {
-      await updateDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'materials', id), { [field]: field === 'src' ? getDirectDriveUrl(value) : value });
-    }
+  const handleCostoChange = (key, val) => {
+    const num = parseInt(val.replace(/\./g, '')) || 0;
+    setCostos(prev => ({ ...prev, [key]: num }));
   };
 
-  const removeMadera = async (id) => {
+  const saveCostos = async () => {
     if (!isAdmin) return;
-    if (typeof id === 'string') await deleteDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'materials', id));
+    await setDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'settings', 'costos'), costos);
+    alert("Costos actualizados");
   };
 
-  // --- LOGICA DE NEGOCIO ---
+
+  // --- LÓGICA DE NEGOCIO ---
   useEffect(() => {
     if (paso === 3 && muebleSeleccionado) {
       const isMesa = muebleSeleccionado.id?.includes('mesa');
@@ -517,16 +587,11 @@ const App = () => {
     if (medidas) setConfig({ ...config, ancho: medidas.w, largo: 60, profundidad: medidas.l });
   };
 
-  // Lógica de Materiales
   useEffect(() => {
     if (paso === 3) {
-      // Reglas Mesa a Medida (EXTERIOR)
       if (muebleSeleccionado?.id === 'mesa_custom' && config.uso === 'exterior') {
-        // Si es exterior, forzar construcción Maciza o Chapa (no placa)
         if (config.tipoConstruccion === 'placa') setConfig(p => ({ ...p, tipoConstruccion: 'maciza' }));
-        // Si es mesa exterior, forzar patas metal o sin patas
         if (config.tipoPatas === 'madera') setConfig(p => ({ ...p, tipoPatas: 'metal' }));
-        // Si es mesa exterior, quitar marco
         if (config.marco) setConfig(p => ({ ...p, marco: false }));
       }
 
@@ -546,11 +611,10 @@ const App = () => {
         if (muebleSeleccionado?.id?.includes('mesa')) esp = '2"';
         if (!mats.find(m => m.id === config.material)) setConfig(prev => ({ ...prev, material: 'eucalipto' }));
       } else if (config.tipoConstruccion === 'placa') {
-        mats = []; // Se maneja via Modal Melamina
+        mats = []; // Se maneja via Modal
         esp = "18mm";
         if (muebleSeleccionado?.id?.includes('mesa')) esp = "36mm (Regruesado)";
-        const allMelamines = Object.values(MELAMINAS_OPCIONES).flat();
-        if (!allMelamines.find(m => m.id === config.material)) setConfig(prev => ({ ...prev, material: 'm_blanco' }));
+        if (!melaminas.find(m => m.id === config.material)) setConfig(prev => ({ ...prev, material: 'm_blanco' }));
       } else if (config.tipoConstruccion === 'puerta_placa') {
         mats = [MATERIAL_PUERTA_PLACA]; esp = "Std"; setConfig(prev => ({ ...prev, material: MATERIAL_PUERTA_PLACA.id }));
       } else if (config.tipoConstruccion === 'chapa_inyectada') {
@@ -559,9 +623,8 @@ const App = () => {
       setMaterialesPosibles(mats);
       setEspesorVisual(esp);
     }
-  }, [config.tipoConstruccion, config.uso, config.tipoPatas, config.marco, paso, costos, maderas]);
+  }, [config.tipoConstruccion, config.uso, config.tipoPatas, config.marco, paso, costos, maderas, melaminas]);
 
-  // Precio
   useEffect(() => {
     if (catSeleccionada?.id === 'cat_muebles') { setPrecioItemActual(0); return; }
     if (paso === 3 && config.material) {
@@ -597,17 +660,14 @@ const App = () => {
           base = mat ? costos[`madera_${mat.tier}`] : costos.madera_basica;
           if (config.uso === 'exterior') base *= costos.factor_exterior;
         }
-
         let pies = (config.ancho / 2.5) * 2 * (config.largo / 100) * 0.3;
         structurePrice = pies * base;
         if (config.tipoPatas === 'metal') structurePrice += costos.patas_metal;
         if (config.tipoPatas === 'madera') structurePrice += costos.patas_madera;
         if (config.marco) structurePrice += (base * 30);
-
         structurePrice += (config.cantCajones * costos.costo_cajon_completo);
         structurePrice += (config.cantPuertas * costos.costo_puerta_mueble);
       }
-
       let finalPrice = structurePrice;
       if (config.tipoConstruccion === 'maciza' || config.tipoConstruccion === 'puerta_placa') {
         if (config.acabado === 'cetol') finalPrice += costos.term_cetol;
@@ -617,7 +677,6 @@ const App = () => {
         if (config.chapa_color === 'oxidado') finalPrice += costos.term_pintura_chapa_oxi;
         else finalPrice += costos.term_pintura_chapa_std;
       }
-
       finalPrice = Math.round(finalPrice / 1000) * 1000;
       setPrecioItemActual(finalPrice);
     }
@@ -630,8 +689,7 @@ const App = () => {
     } else if (config.tipoConstruccion === 'puerta_placa') {
       mName = 'Puerta Placa';
     } else {
-      const allMelamines = Object.values(MELAMINAS_OPCIONES).flat();
-      const found = allMelamines.find(m => m.id === config.material);
+      const found = melaminas.find(m => m.id === config.material);
       if (found) mName = found.nombre;
       else {
         const matConfig = maderas.find(m => m.id === config.material);
@@ -642,11 +700,47 @@ const App = () => {
     setPaso(1); setCatSeleccionada(null);
   };
 
-  const enviarWhatsapp = () => {
+  const enviarWhatsapp = async () => {
     const total = carrito.reduce((a, b) => a + b.precio, 0);
-    const pedidoId = Math.floor(Math.random() * 10000);
-    setOrders([{ id: pedidoId, cliente, items: carrito, total }, ...orders]);
-    let text = `👋 Hola *eBe Muebles*, soy ${cliente.nombre}.\n📍 Desde: ${cliente.lugar} (${cliente.entrega === 'taller' ? 'Retiro en Taller' : 'Envío a domicilio'})\n📋 *PEDIDO WEB #${pedidoId}*\n\n`;
+
+    // Obtener el siguiente ID secuencial
+    let nextOrderNumber = 1780; // Valor inicial
+    try {
+      const q = query(
+        collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'orders'),
+        orderBy('orderNumber', 'desc'),
+        limit(1)
+      );
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const lastData = querySnapshot.docs[0].data();
+        // Asegurarnos de que existe el campo y es número
+        if (typeof lastData.orderNumber === 'number') {
+          nextOrderNumber = lastData.orderNumber + 1;
+        }
+      }
+    } catch (e) {
+      console.error("Error obteniendo número de pedido, usando fallback", e);
+    }
+
+    const pedidoId = nextOrderNumber; // Usamos el secuencial
+
+    const newOrder = {
+      id: pedidoId.toString(),
+      orderNumber: pedidoId, // Guardamos el número para la próxima query
+      cliente,
+      items: carrito,
+      total,
+      createdAt: Date.now()
+    };
+
+    try {
+      await addDoc(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'orders'), newOrder);
+    } catch (e) {
+      console.error("Error guardando pedido", e);
+    }
+
+    let text = `👋 Hola *eBe Muebles*, soy ${cliente.nombre}.\n📍 Desde: ${cliente.lugar} (${cliente.entrega === 'taller' ? 'Retiro en Taller' : 'Envío a domicilio'})\n📱 Tel: ${cliente.telefono || 'No especificado'}\n📋 *PEDIDO WEB #${pedidoId}*\n\n`;
     carrito.forEach(i => {
       text += `🔹 *${i.mueble.nombre}* (${i.config.ancho}x${i.config.largo}cm)\n   ${i.config.materialNombre}\n`;
       if (i.precio === 0) text += `   (A Cotizar)\n`;
@@ -656,8 +750,123 @@ const App = () => {
     window.open(`https://wa.me/${DATOS_CONTACTO.telefono_whatsapp}?text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  // PDF Generation (Mantenido igual)
-  const generarPresupuestoPDF = () => { /* Logica de PDF antigua se mantiene aquí */ alert("Generando PDF..."); };
+  const generarPresupuestoPDF = () => {
+    const total = carrito.reduce((a, b) => a + b.precio, 0);
+    const printWindow = window.open('', '_blank');
+    const fecha = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const idPresupuesto = Math.floor(Math.random() * 100000);
+    const logoSrc = getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC;
+
+    const itemsHtml = carrito.map(item => {
+      const visual = getMaterialVisual(item.config, maderas, melaminas);
+      let visualHtml = '';
+      if (visual.type === 'img' && visual.value) {
+        visualHtml = `<img src="${getDirectDriveUrl(visual.value)}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px;border:1px solid #ccc">`;
+      } else {
+        visualHtml = `<span style="display:inline-block;width:24px;height:24px;border-radius:50%;background:${visual.value};vertical-align:middle;margin-right:8px;border:1px solid #ccc"></span>`;
+      }
+
+      // Logic for finish label
+      let acabadoLabel = '';
+      if (item.config.acabado) {
+        if (item.config.acabado === 'natural') acabadoLabel = 'Natural';
+        else if (item.config.acabado === 'cetol') acabadoLabel = 'Impregnante (Cetol)';
+        else if (item.config.acabado === 'laca') acabadoLabel = 'Laca Poliuretánica';
+        else acabadoLabel = item.config.acabado; // Fallback
+      }
+
+      const isPuerta = item.mueble.id?.includes('puerta') || item.mueble.id === 'puerta_custom';
+      const marcoText = isPuerta ? (item.config.marco ? '• Incluye Marco Completo<br/>' : '• Hoja Suelta (Sin Marco)<br/>') : (item.config.marco ? '• Incluye Marco<br/>' : '');
+
+      return `
+        <tr>
+            <td width="40%">
+                <div style="display:flex;align-items:center">
+                    ${visualHtml}
+                    <div>
+                        <strong>${item.mueble.nombre}</strong><br/>
+                        <span style="color:#666;font-style:italic;font-size:12px">${item.config.materialNombre}</span>
+                    </div>
+                </div>
+            </td>
+            <td width="40%" style="color:#444">
+                • Medidas: ${item.config.ancho} x ${item.config.largo}cm<br/>
+                ${marcoText}
+                ${item.config.cantCajones > 0 ? `• ${item.config.cantCajones} Cajones<br/>` : ''}
+                ${(item.config.tipoConstruccion === 'maciza' || item.config.tipoConstruccion === 'puerta_placa') ? `• Terminación: <strong>${acabadoLabel}</strong>` : ''}
+            </td>
+            <td width="20%" style="text-align:right;font-weight:700">$${new Intl.NumberFormat('es-AR').format(item.precio)}</td>
+        </tr>
+        `;
+    }).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Presupuesto #${idPresupuesto} - EBE Muebles</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800&family=Inter:wght@400;500;600&display=swap');
+            @page { size: A4; margin: 0; }
+            body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: #fff; color: #1a1a1a; -webkit-print-color-adjust: exact; width: 100%; }
+            .page-container { width: 100%; max-width: 210mm; margin: 0 auto; padding: 40px; box-sizing: border-box; position: relative; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 4px solid #5D4037; padding-bottom: 20px; }
+            .logo-box img { height: 80px; object-fit: contain; }
+            .doc-info { text-align: right; }
+            .doc-title { font-family: 'Montserrat', sans-serif; font-size: 32px; font-weight: 800; color: #5D4037; letter-spacing: -1px; margin: 0; text-transform: uppercase; }
+            .doc-meta { margin-top: 5px; font-size: 14px; color: #666; font-weight: 500; }
+            .info-grid { display: flex; gap: 40px; margin-bottom: 40px; }
+            .info-col { flex: 1; }
+            .info-label { font-family: 'Montserrat', sans-serif; font-size: 12px; font-weight: 700; color: #8B5E3C; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; border-bottom: 2px solid #E0D8C3; padding-bottom: 4px; display: inline-block; }
+            .info-text p { margin: 4px 0; font-size: 13px; color: #333; line-height: 1.4; }
+            .info-text strong { font-weight: 700; color: #000; font-size: 14px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; border: 1px solid #eee; }
+            th { text-align: left; padding: 14px 12px; background-color: #f8f5f2; color: #5D4037; font-family: 'Montserrat', sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #E0D8C3; }
+            td { padding: 16px 12px; border-bottom: 1px solid #eee; font-size: 13px; vertical-align: top; color: #333; }
+            .totals-section { display: flex; justify-content: flex-end; margin-top: 20px; margin-bottom: 50px; }
+            .totals-box { width: 300px; background: #F9F7F2; padding: 25px; border-radius: 8px; border: 1px solid #E0D8C3; }
+            .total-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; color: #555; font-weight: 500; }
+            .total-final { display: flex; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 2px solid #5D4037; font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 18px; color: #5D4037; }
+            .footer { margin-top: auto; padding-top: 30px; border-top: 1px solid #eee; font-size: 11px; color: #777; line-height: 1.6; text-align: justify; }
+            .footer h4 { font-family: 'Montserrat', sans-serif; font-size: 12px; color: #333; margin: 0 0 5px 0; font-weight: 700; }
+            .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 100px; color: rgba(93, 64, 55, 0.04); font-family: 'Montserrat', sans-serif; font-weight: 900; z-index: -1; pointer-events: none; white-space: nowrap; }
+          </style>
+        </head>
+        <body>
+          <div class="page-container">
+            <div class="watermark">EBE MUEBLES</div>
+            <div class="header">
+                <div class="logo-box"><img src="${logoSrc}" alt="Logo EBE" /></div>
+                <div class="doc-info"><h1 class="doc-title">Presupuesto</h1><div class="doc-meta">Nº ${idPresupuesto} &nbsp;|&nbsp; Fecha: ${fecha}</div></div>
+            </div>
+            <div class="info-grid">
+                <div class="info-col"><span class="info-label">De</span><div class="info-text"><p><strong>${DATOS_CONTACTO.nombre_negocio}</strong></p><p>${DATOS_CONTACTO.ubicacion_texto}</p><p>Instagram: @ebe.muebles</p></div></div>
+                <div class="info-col"><span class="info-label">Para</span><div class="info-text"><p><strong>${cliente.nombre || 'Consumidor Final'}</strong></p><p>${cliente.lugar ? 'Ubicación: ' + cliente.lugar : ''}</p><p>${cliente.entrega === 'taller' ? 'Modo: Retiro en Taller' : 'Modo: Envío a Domicilio'}</p></div></div>
+            </div>
+            <table>
+                <thead><tr><th>Producto</th><th>Detalles y Especificaciones</th><th style="text-align:right">Importe</th></tr></thead>
+                <tbody>${itemsHtml}</tbody>
+            </table>
+            <div class="totals-section">
+                <div class="totals-box">
+                    <div class="total-row"><span>Subtotal</span><span>$${new Intl.NumberFormat('es-AR').format(total)}</span></div>
+                    <div class="total-row"><span>Envío</span><span>A Cotizar</span></div>
+                    <div class="total-final"><span>TOTAL ESTIMADO</span><span>$${new Intl.NumberFormat('es-AR').format(total)}</span></div>
+                </div>
+            </div>
+            <div class="footer">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px">
+                    <div><h4>CONDICIONES COMERCIALES</h4><p>Este presupuesto tiene una validez de 10 días hábiles. Los precios están sujetos a verificación final vía WhatsApp antes de confirmar el pedido.</p></div>
+                    <div><h4>TIEMPOS Y ENTREGAS</h4><p>La demora de fabricación se coordina al momento de la seña. Los envíos corren por cuenta y riesgo del cliente.</p></div>
+                </div>
+                <div style="text-align:center;margin-top:40px;font-weight:700;color:#5D4037;font-size:12px;letter-spacing:1px">GRACIAS POR ELEGIR DISEÑO ARGENTINO</div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    setTimeout(() => { printWindow.print(); }, 800);
+  };
 
   const handleAi = async (e) => { e.preventDefault(); setAiLoading(true); setTimeout(() => { setAiResponse("Para este estilo, te recomiendo combinar Petiribí con terminación natural."); setAiLoading(false); }, 1500); };
   const nextImage = (e) => { e && e.stopPropagation(); setSelectedImage(galeria[(galeria.findIndex(i => i.id === selectedImage.id) + 1) % galeria.length]); };
@@ -666,33 +875,89 @@ const App = () => {
   // --- RENDER ---
   if (isAdmin) return (
     <div className={`min-h-screen bg-[#F5F5F5] text-[#333] font-sans flex`}>
-      {/* Sidebar Admin (Tu diseño original) */}
+      {/* Sidebar Admin */}
       <div className="w-20 md:w-64 bg-white border-r border-[#E0E0E0] flex flex-col fixed h-full z-20 transition-all">
         <div className="p-4 md:p-6 border-b border-[#E0E0E0] flex items-center justify-center md:justify-start gap-3">
           <Settings className="text-[#5D4037] animate-spin-slow" />
           <span className="font-bold text-[#5D4037] text-lg hidden md:block uppercase tracking-wider">Admin</span>
         </div>
         <div className="flex-1 overflow-y-auto py-4">
-          <button onClick={() => setAdminTab('dashboard')} className={`w-full flex items-center gap-3 p-4 md:px-6 hover:bg-[#F9F7F2] transition-colors ${adminTab === 'dashboard' ? 'bg-[#F9F7F2] border-r-4 border-[#8B5E3C] text-[#5D4037]' : 'text-[#666]'}`}><BarChart3 size={20} /> <span className="hidden md:block font-medium">Dashboard</span></button>
-          <button onClick={() => setAdminTab('gallery')} className={`w-full flex items-center gap-3 p-4 md:px-6 hover:bg-[#F9F7F2] transition-colors ${adminTab === 'gallery' ? 'bg-[#F9F7F2] border-r-4 border-[#8B5E3C] text-[#5D4037]' : 'text-[#666]'}`}><ImageIcon size={20} /> <span className="hidden md:block font-medium">Galería</span></button>
-          <button onClick={() => setAdminTab('materiales')} className={`w-full flex items-center gap-3 p-4 md:px-6 hover:bg-[#F9F7F2] transition-colors ${adminTab === 'materiales' ? 'bg-[#F9F7F2] border-r-4 border-[#8B5E3C] text-[#5D4037]' : 'text-[#666]'}`}><TreePine size={20} /> <span className="hidden md:block font-medium">Materiales</span></button>
-          <button onClick={() => setAdminTab('config')} className={`w-full flex items-center gap-3 p-4 md:px-6 hover:bg-[#F9F7F2] transition-colors ${adminTab === 'config' ? 'bg-[#F9F7F2] border-r-4 border-[#8B5E3C] text-[#5D4037]' : 'text-[#666]'}`}><Settings size={20} /> <span className="hidden md:block font-medium">General</span></button>
+          {['dashboard', 'orders', 'gallery', 'prices', 'melaminas', 'config'].map(tab => (
+            <button key={tab} onClick={() => setAdminTab(tab)} className={`w-full flex items-center gap-3 p-4 md:px-6 hover:bg-[#F9F7F2] transition-colors ${adminTab === tab ? 'bg-[#F9F7F2] border-r-4 border-[#8B5E3C] text-[#5D4037]' : 'text-[#555]'}`}>
+              {tab === 'dashboard' && <BarChart3 size={20} />}
+              {tab === 'orders' && <ShoppingCart size={20} />}
+              {tab === 'gallery' && <ImageIcon size={20} />}
+              {tab === 'prices' && <Coins size={20} />}
+              {tab === 'melaminas' && <Palette size={20} />}
+              {tab === 'config' && <Settings size={20} />}
+              <span className="hidden md:block font-bold text-sm capitalize tracking-wide">{tab === 'orders' ? 'Pedidos' : tab}</span>
+            </button>
+          ))}
         </div>
         <div className="p-4 border-t border-[#E0E0E0]">
-          <button onClick={() => { signOut(auth); setIsAdmin(false); }} className="w-full text-red-500 flex items-center justify-center md:justify-start gap-2 hover:bg-red-50 p-3 rounded-xl transition-colors font-bold text-sm"><LogOut size={20} /> <span className="hidden md:block">Salir</span></button>
+          <button onClick={() => { signOut(auth); setIsAdmin(false); signInAnonymously(auth); }} className="w-full text-red-500 flex items-center justify-center md:justify-start gap-2 hover:bg-red-50 p-3 rounded-xl transition-colors font-bold text-sm"><LogOut size={20} /> <span className="hidden md:block">Salir</span></button>
         </div>
       </div>
+
       {/* Content Admin */}
       <div className="flex-1 ml-20 md:ml-64 p-6 md:p-10 overflow-y-auto max-h-screen">
-        {adminTab === 'dashboard' && <div className="text-2xl font-bold text-[#333]">Bienvenido al Panel de Control</div>}
+        {adminTab === 'dashboard' && <div className="text-3xl font-bold text-[#333] mb-6">Panel de Control</div>}
+
+        {adminTab === 'orders' && (
+          <div className="space-y-6 max-w-6xl">
+            <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
+              <h3 className="font-bold text-[#8B5E3C] uppercase text-sm mb-4 border-b pb-2">Pedidos Recientes</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left text-gray-500">
+                  <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3">Fecha</th>
+                      <th className="px-6 py-3">Cliente</th>
+                      <th className="px-6 py-3">Contacto</th>
+                      <th className="px-6 py-3">Items</th>
+                      <th className="px-6 py-3 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ordersList.map(order => (
+                      <tr key={order.id} className="bg-white border-b hover:bg-gray-50">
+                        <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
+                          {new Date(order.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 font-bold text-[#333]">
+                          {order.cliente.nombre}
+                          <div className="text-xs font-normal text-gray-500">{order.cliente.lugar}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-1"><Phone size={12} /> {order.cliente.telefono || '-'}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {order.items.map((i, idx) => (
+                            <div key={idx} className="text-xs mb-1">• {i.mueble.nombre} ({i.config.materialNombre})</div>
+                          ))}
+                        </td>
+                        <td className="px-6 py-4 text-right font-bold text-[#5D4037]">
+                          ${new Intl.NumberFormat('es-AR').format(order.total)}
+                        </td>
+                      </tr>
+                    ))}
+                    {ordersList.length === 0 && <tr><td colSpan="5" className="text-center py-8">No hay pedidos registrados aún.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ... (Otros tabs admin igual que antes) ... */}
         {adminTab === 'gallery' && (
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-xl border border-[#E0D8C3]">
               <h3 className="font-bold uppercase text-sm text-[#8B5E3C] mb-4">Agregar Foto</h3>
               <div className="flex gap-2">
-                <input value={newImage.url} onChange={e => setNewImage({ ...newImage, url: e.target.value })} placeholder="URL Imagen" className="flex-1 border p-2 rounded" />
-                <input value={newImage.alt} onChange={e => setNewImage({ ...newImage, alt: e.target.value })} placeholder="Título" className="flex-1 border p-2 rounded" />
-                <button onClick={addGalleryImage} className="bg-[#5D4037] text-white p-2 rounded"><Plus /></button>
+                <input value={newImage.url} onChange={e => setNewImage({ ...newImage, url: e.target.value })} placeholder="URL Imagen" className="flex-1 border p-2 rounded text-sm font-medium" />
+                <input value={newImage.alt} onChange={e => setNewImage({ ...newImage, alt: e.target.value })} placeholder="Título" className="flex-1 border p-2 rounded text-sm font-medium" />
+                <button onClick={addGalleryImage} className="bg-[#5D4037] text-white p-2 rounded hover:bg-[#3E2723] transition-colors"><Plus /></button>
               </div>
             </div>
             <div className="grid grid-cols-4 gap-4">
@@ -705,26 +970,89 @@ const App = () => {
             </div>
           </div>
         )}
-        {adminTab === 'materiales' && (
-          <div className="space-y-4">
-            <button onClick={addMadera} className="bg-[#5D4037] text-white p-2 rounded flex items-center gap-2"><Plus size={16} /> Agregar Madera</button>
-            <div className="space-y-2">
-              {maderas.map(m => (
-                <div key={m.id} className="bg-white p-4 rounded border flex items-center gap-4">
-                  <img src={getDirectDriveUrl(m.src)} className="w-10 h-10 rounded object-cover" />
-                  <input value={m.nombre} onChange={e => updateMaderaFirestore(m.id, 'nombre', e.target.value)} className="border p-1 rounded" />
-                  <button onClick={() => removeMadera(m.id)} className="text-red-500"><Trash2 /></button>
+
+        {adminTab === 'melaminas' && (
+          <div className="space-y-6 max-w-5xl">
+            <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
+              <div className="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 className="font-bold uppercase text-sm text-[#8B5E3C]">Gestión de Melaminas</h3>
+                <button onClick={restaurarMelaminasDefault} className="text-xs text-blue-600 flex items-center gap-1 hover:underline font-bold"><RefreshCw size={12} /> Restaurar Defaults</button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-gray-500">Nombre</label>
+                  <input value={newMelamina.nombre} onChange={e => setNewMelamina({ ...newMelamina, nombre: e.target.value })} className="border p-2 rounded text-sm font-medium" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-gray-500">Categoría</label>
+                  <select value={newMelamina.category} onChange={e => setNewMelamina({ ...newMelamina, category: e.target.value })} className="border p-2 rounded text-sm bg-white font-medium">
+                    {CATEGORIAS_MELAMINA.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-gray-500">Color/Gradiente CSS</label>
+                  <div className="flex gap-2">
+                    <input value={newMelamina.css} onChange={e => setNewMelamina({ ...newMelamina, css: e.target.value })} className="border p-2 rounded text-sm flex-1 font-medium" />
+                    <div className="w-10 h-10 rounded border" style={{ background: newMelamina.css }}></div>
+                  </div>
+                </div>
+                <button onClick={addMelamina} className="bg-[#5D4037] text-white p-2 rounded font-bold text-sm h-10 hover:bg-[#3E2723]">AGREGAR</button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {melaminas.map(m => (
+                <div key={m.id} className="bg-white p-3 rounded-lg border border-gray-200 flex items-center justify-between group">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded border" style={{ background: m.css }}></div>
+                    <div>
+                      <div className="font-bold text-xs text-gray-800">{m.nombre}</div>
+                      <div className="text-[10px] text-gray-500 uppercase font-semibold">{CATEGORIAS_MELAMINA.find(c => c.id === m.category)?.label}</div>
+                    </div>
+                  </div>
+                  <button onClick={() => deleteMelamina(m.id)} className="text-red-300 hover:text-red-500"><Trash2 size={16} /></button>
                 </div>
               ))}
             </div>
           </div>
         )}
+
+        {adminTab === 'prices' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl">
+            {Object.entries(CATEGORIAS_COSTOS).map(([cat, keys]) => (
+              <div key={cat} className="bg-white p-6 rounded-xl border border-[#E0D8C3]">
+                <h3 className="font-bold text-[#8B5E3C] uppercase text-sm mb-4 border-b pb-2">{cat}</h3>
+                <div className="space-y-3">
+                  {keys.map(k => (
+                    <div key={k} className="flex justify-between items-center text-sm">
+                      <label className="text-gray-600 uppercase font-medium">{k.replace(/_/g, ' ')}</label>
+                      <input value={new Intl.NumberFormat('es-AR').format(costos[k] || 0)} onChange={e => handleCostoChange(k, e.target.value)} className="w-24 text-right border rounded p-1 font-mono font-bold text-gray-700" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <button onClick={saveCostos} className="fixed bottom-6 right-6 bg-[#5D4037] text-white p-4 rounded-full shadow-xl hover:scale-105 transition-transform"><Save size={24} /></button>
+          </div>
+        )}
+
         {adminTab === 'config' && (
           <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] space-y-4 max-w-lg">
-            <h3 className="font-bold text-[#5D4037]">General</h3>
-            <input value={adminLogoInput} onChange={e => setAdminLogoInput(e.target.value)} placeholder="Logo URL" className="w-full border p-2 rounded" />
-            <input value={adminInstagramInput} onChange={e => setAdminInstagramInput(e.target.value)} placeholder="Instagram URL" className="w-full border p-2 rounded" />
-            <button onClick={handleSaveSettings} className="bg-[#5D4037] text-white w-full py-2 rounded font-bold">Guardar Cambios</button>
+            <h3 className="font-bold text-[#5D4037] uppercase text-sm">Configuración General</h3>
+            <div>
+              <label className="text-xs font-bold text-gray-500 mb-1 block">URL Logo Principal</label>
+              <input value={adminLogoInput} onChange={e => setAdminLogoInput(e.target.value)} placeholder="https://..." className="w-full border p-2 rounded text-sm font-medium" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 mb-1 block">URL Imagen "Sobre Nosotros"</label>
+              <input value={adminAboutUsImageInput} onChange={e => setAdminAboutUsImageInput(e.target.value)} placeholder="https://..." className="w-full border p-2 rounded text-sm font-medium" />
+              <p className="text-[10px] text-gray-400 mt-1">Si se deja vacío, usa el icono por defecto.</p>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 mb-1 block">Link Instagram</label>
+              <input value={adminInstagramInput} onChange={e => setAdminInstagramInput(e.target.value)} placeholder="Instagram URL" className="w-full border p-2 rounded text-sm font-medium" />
+            </div>
+            <button onClick={handleSaveSettings} className="bg-[#5D4037] text-white w-full py-3 rounded-lg font-bold hover:bg-[#3E2723] transition-colors mt-4">GUARDAR CAMBIOS</button>
           </div>
         )}
       </div>
@@ -736,7 +1064,7 @@ const App = () => {
       <GlobalStyles />
       <BackgroundAmbience />
 
-      {/* Botón Carrito FLOTANTE (Recuperado) */}
+      {/* Botón Carrito FLOTANTE */}
       {paso > 0 && paso !== 4 && carrito.length > 0 && (
         <button onClick={() => setPaso(4)} className={`fixed bottom-24 right-6 ${THEME.primary} text-white p-3 md:p-4 rounded-full shadow-xl hover:scale-110 transition-all z-50 flex items-center justify-center border-2 border-white`}>
           <ShoppingCart size={24} />
@@ -817,12 +1145,12 @@ const App = () => {
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => setPaso(7)} className={`w-full py-4 rounded-xl border-2 border-[#5D4037] flex flex-col md:flex-row items-center justify-center gap-2 hover:bg-[#5D4037]/5 transition-all text-[#5D4037]`}>
+                  <Mail size={20} /> <span className="text-xs font-bold uppercase tracking-wide">Contacto</span>
+                </button>
                 <button onClick={() => setShowAi(true)} className={`w-full py-4 rounded-xl border-2 border-[#5D4037] flex flex-col md:flex-row items-center justify-center gap-2 hover:bg-[#5D4037]/5 transition-all text-[#5D4037]`}>
                   <Sparkles size={20} /> <span className="text-xs font-bold uppercase tracking-wide">Asistente</span>
                 </button>
-                <a href={instagramUrl || DEFAULT_INSTAGRAM_URL} target="_blank" rel="noreferrer" className={`w-full py-4 rounded-xl border-2 border-[#5D4037] flex flex-col md:flex-row items-center justify-center gap-2 hover:bg-[#5D4037]/5 transition-all text-[#5D4037]`}>
-                  <Instagram size={20} /> <span className="text-xs font-bold uppercase tracking-wide">Instagram</span>
-                </a>
               </div>
             </div>
           </div>
@@ -878,23 +1206,26 @@ const App = () => {
                     <button onClick={() => setShowMaterialModal(false)}><X className={THEME.textMuted} /></button>
                   </div>
                   <div className="p-6 space-y-6">
-                    {/* Renderizamos TODAS las categorías de melamina */}
-                    {Object.entries(MELAMINAS_OPCIONES).map(([catKey, items]) => (
-                      <div key={catKey}>
-                        <h4 className={`text-xs font-bold ${THEME.accent} uppercase mb-2 border-b border-[#E0D8C3] pb-1`}>{catKey.replace(/_/g, ' ')}</h4>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                          {items.map(m => (
-                            <button key={m.id} onClick={() => { setConfig({ ...config, material: m.id }); setShowMaterialModal(false) }} className={`group text-left p-1 rounded-xl transition-all ${config.material === m.id ? 'bg-[#F9F7F2] ring-2 ring-[#8B5E3C]' : 'hover:bg-gray-50'}`}>
-                              <div className="aspect-video rounded-lg mb-2 shadow-sm border border-[#E0D8C3]" style={{ background: m.css }}></div>
-                              <div className="flex justify-between items-center px-1">
-                                <span className={`text-[10px] font-bold uppercase ${THEME.textMain} tracking-wide truncate`}>{m.nombre}</span>
-                                {config.material === m.id && <Check size={12} className={THEME.accent} />}
-                              </div>
-                            </button>
-                          ))}
+                    {CATEGORIAS_MELAMINA.map(cat => {
+                      const items = melaminasGrouped[cat.id] || [];
+                      if (items.length === 0) return null;
+                      return (
+                        <div key={cat.id}>
+                          <h4 className={`text-xs font-bold ${THEME.accent} uppercase mb-2 border-b border-[#E0D8C3] pb-1`}>{cat.label}</h4>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                            {items.map(m => (
+                              <button key={m.id} onClick={() => { setConfig({ ...config, material: m.id }); setShowMaterialModal(false) }} className={`group text-left p-1 rounded-xl transition-all ${config.material === m.id ? 'bg-[#F9F7F2] ring-2 ring-[#8B5E3C]' : 'hover:bg-gray-50'}`}>
+                                <div className="aspect-video rounded-lg mb-2 shadow-sm border border-[#E0D8C3]" style={{ background: m.css }}></div>
+                                <div className="flex justify-between items-center px-1">
+                                  <span className={`text-[10px] font-bold uppercase ${THEME.textMain} tracking-wide truncate`}>{m.nombre}</span>
+                                  {config.material === m.id && <Check size={12} className={THEME.accent} />}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -960,13 +1291,13 @@ const App = () => {
                         <Grid size={20} className={THEME.textMuted} />
                         <span className={`font-bold text-xs md:text-sm ${THEME.textMain}`}>
                           {config.material.startsWith('m_') && config.material !== 'm_blanco'
-                            ? `Seleccionado: ${Object.values(MELAMINAS_OPCIONES).flat().find(m => m.id === config.material)?.nombre || 'Diseño'}`
+                            ? `Seleccionado: ${melaminas.find(m => m.id === config.material)?.nombre || 'Diseño'}`
                             : 'Seleccionar Diseño (Colores/Texturas)'}
                         </span>
                       </div>
                       {/* Mini Preview si hay selección */}
                       {config.material.startsWith('m_') && config.material !== 'm_blanco' && (
-                        <div className="w-8 h-8 rounded-lg border border-[#E0D8C3] shadow-sm" style={{ background: Object.values(MELAMINAS_OPCIONES).flat().find(m => m.id === config.material)?.css }}></div>
+                        <div className="w-8 h-8 rounded-lg border border-[#E0D8C3] shadow-sm" style={{ background: melaminas.find(m => m.id === config.material)?.css }}></div>
                       )}
                       {!config.material.startsWith('m_') || config.material === 'm_blanco' && <ChevronRight size={16} className={THEME.textMuted} />}
                     </button>
@@ -1005,7 +1336,7 @@ const App = () => {
                   {config.tipoPatas !== 'sin_patas' && (
                     <div className="grid grid-cols-3 gap-3">
                       {OPCIONES_PATAS[config.tipoPatas]?.map(p => {
-                        const Icon = p.icon; // Solución error objeto como hijo
+                        const Icon = p.icon;
                         return (
                           <button key={p.id} onClick={() => setConfig({ ...config, modeloPatas: p.id })} className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border transition-all h-24 ${config.modeloPatas === p.id ? `${THEME.accentBg} text-white border-transparent` : 'border-[#E0D8C3] text-[#666] hover:border-[#8B5E3C]'}`}>
                             {Icon && <Icon size={20} />}
@@ -1050,7 +1381,52 @@ const App = () => {
               )}
             </section>
 
-            {/* Footer Precio (RECUPERADO: NO FLOTANTE, AL FINAL) */}
+            {/* ESPECIFICACIONES TÉCNICAS (Nuevo Bloque) */}
+            {muebleSeleccionado?.id?.includes('puerta') && (
+              <div className="bg-[#2C241F] text-[#E8DCCA] p-6 rounded-2xl mb-8 shadow-xl border border-[#3E2723] relative overflow-hidden">
+                {/* Decorative background element */}
+                <div className="absolute top-0 right-0 w-24 h-24 bg-[#E8DCCA]/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
+
+                <div className="flex items-center gap-2 mb-4 text-white font-bold text-xs uppercase tracking-[0.2em] border-b border-[#E8DCCA]/10 pb-3">
+                  <Info size={16} className="text-[#8B5E3C]" /> Especificaciones Técnicas
+                </div>
+
+                <ul className="space-y-3 text-sm font-light">
+                  {config.uso === 'exterior' ? (
+                    <>
+                      <li className="flex items-start gap-3">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#8B5E3C] mt-1.5 shrink-0"></div>
+                        <span><strong className="text-white font-medium">Estructura:</strong> Alma de acero reforzada.</span>
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#8B5E3C] mt-1.5 shrink-0"></div>
+                        <span><strong className="text-white font-medium">Herrajes:</strong> Bisagra pivotante o reforzada, cerradura de seguridad.</span>
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#8B5E3C] mt-1.5 shrink-0"></div>
+                        <span><strong className="text-white font-medium">Accesorios:</strong> Manija interior y manijón exterior incluidos.</span>
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#8B5E3C] mt-1.5 shrink-0"></div>
+                        <span><strong className="text-white font-medium">Espesor Total:</strong> 3 pulgadas.</span>
+                      </li>
+                    </>
+                  ) : (
+                    <>
+                      <li className="flex items-start gap-3">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#8B5E3C] mt-1.5 shrink-0"></div>
+                        <span><strong className="text-white font-medium">Herrajes:</strong> Bisagras y manijas incluidas.</span>
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#8B5E3C] mt-1.5 shrink-0"></div>
+                        <span><strong className="text-white font-medium">Espesor Total:</strong> 2 pulgadas.</span>
+                      </li>
+                    </>
+                  )}
+                </ul>
+              </div>
+            )}
+
             <div className="mt-8 mb-12 flex flex-col items-center gap-4">
               <div className="flex flex-col items-center">
                 <span className={`text-xs ${THEME.textMuted} uppercase tracking-widest mb-1`}>Valor Estimado</span>
@@ -1069,21 +1445,33 @@ const App = () => {
         {paso === 4 && (
           <div className="max-w-2xl mx-auto p-4 md:p-6 animate-fade-in pb-10">
             <div className="space-y-4 mb-8">
-              {carrito.map(item => (
-                <div key={item.id} className={`${THEME.card} p-5 rounded-2xl flex gap-5 group relative`}>
-                  <div className={`w-20 h-20 rounded-lg bg-[#F9F7F2] flex items-center justify-center text-3xl border border-[#E0D8C3]}`}>{item.mueble.imagen}</div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start"><h3 className={`font-bold uppercase text-lg ${THEME.textMain} font-sans`}>{item.mueble.nombre}</h3><button onClick={() => setCarrito(carrito.filter(c => c.id !== item.id))} className={`${THEME.textMuted} hover:text-red-500`}><Trash2 size={18} /></button></div>
-                    <p className={`text-sm ${THEME.textMuted} mt-1`}>{item.config.ancho}x{item.config.largo}cm • {item.config.materialNombre}</p>
-                    <div className={`text-xs ${THEME.accent} mt-1 font-bold`}>
-                      {item.config.acabado !== 'natural' && item.config.tipoConstruccion !== 'chapa_inyectada' && `Terminación: ${item.config.acabado} • `}
-                      {item.config.tipoConstruccion === 'chapa_inyectada' && `${item.config.chapa_color} ${item.config.chapa_acabado} • `}
-                      {item.config.marco && `Con Marco`}
+              {carrito.map(item => {
+                // Determine visual representation
+                const visual = getMaterialVisual(item.config, maderas, melaminas);
+                return (
+                  <div key={item.id} className={`${THEME.card} p-5 rounded-2xl flex gap-5 group relative`}>
+                    <div className={`w-20 h-20 rounded-lg flex items-center justify-center border border-[#E0D8C3] overflow-hidden`}>
+                      {visual.type === 'img' && visual.value ? (
+                        <img src={getDirectDriveUrl(visual.value)} className="w-full h-full object-cover" />
+                      ) : visual.type === 'css' ? (
+                        <div className="w-full h-full" style={{ background: visual.value }}></div>
+                      ) : (
+                        <div className="text-3xl">{item.mueble.imagen}</div>
+                      )}
                     </div>
-                    <p className={`text-sm font-bold ${THEME.secondaryText} mt-2`}>{item.precio > 0 ? `$${new Intl.NumberFormat('es-AR').format(item.precio)}` : 'A Cotizar'}</p>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start"><h3 className={`font-bold uppercase text-lg ${THEME.textMain} font-sans`}>{item.mueble.nombre}</h3><button onClick={() => setCarrito(carrito.filter(c => c.id !== item.id))} className={`${THEME.textMuted} hover:text-red-500`}><Trash2 size={18} /></button></div>
+                      <p className={`text-sm ${THEME.textMuted} mt-1`}>{item.config.ancho}x{item.config.largo}cm • {item.config.materialNombre}</p>
+                      <div className={`text-xs ${THEME.accent} mt-1 font-bold`}>
+                        {item.config.acabado !== 'natural' && item.config.tipoConstruccion !== 'chapa_inyectada' && `Terminación: ${item.config.acabado} • `}
+                        {item.config.tipoConstruccion === 'chapa_inyectada' && `${item.config.chapa_color} ${item.config.chapa_acabado} • `}
+                        {item.config.marco && `Con Marco`}
+                      </div>
+                      <p className={`text-sm font-bold ${THEME.secondaryText} mt-2`}>{item.precio > 0 ? `$${new Intl.NumberFormat('es-AR').format(item.precio)}` : 'A Cotizar'}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {carrito.length === 0 && <div className={`text-center py-20 ${THEME.textMuted}`}>Tu pedido está vacío.</div>}
               <button onClick={() => { setPaso(1); setCatSeleccionada(null); }} className={`w-full py-4 rounded-xl border border-dashed border-[#E0D8C3] ${THEME.textMuted} hover:${THEME.accent} hover:border-[#8B5E3C] hover:bg-white transition-all flex items-center justify-center gap-2 font-bold text-sm uppercase`}><Plus size={18} /> Agregar otro mueble</button>
             </div>
@@ -1093,8 +1481,13 @@ const App = () => {
                 <h3 className={`text-xs font-bold uppercase ${THEME.accent} tracking-widest mb-4`}>Datos de Contacto</h3>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className={`flex items-center gap-3 bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] focus-within:border-[#8B5E3C] transition-colors`}><User size={18} className={THEME.textMuted} /><input value={cliente.nombre} onChange={e => setCliente({ ...cliente, nombre: e.target.value })} placeholder="Nombre" className={`bg-transparent w-full outline-none ${THEME.textMain} text-sm placeholder-[#999]`} /></div>
-                  <div className={`flex items-center gap-3 bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] focus-within:border-[#8B5E3C] transition-colors`}><MapPin size={18} className={THEME.textMuted} /><input value={cliente.lugar} onChange={e => setCliente({ ...cliente, lugar: e.target.value })} placeholder="Ciudad" className={`bg-transparent w-full outline-none ${THEME.textMain} text-sm placeholder-[#999]`} /></div>
+                  <div className={`flex items-center gap-3 bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] focus-within:border-[#8B5E3C] transition-colors`}><User size={18} className={THEME.textMuted} /><input value={cliente.nombre} onChange={e => setCliente({ ...cliente, nombre: e.target.value })} placeholder="Nombre" className={`bg-transparent w-full outline-none ${THEME.textMain} text-sm placeholder-[#999] font-medium`} /></div>
+                  <div className={`flex items-center gap-3 bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] focus-within:border-[#8B5E3C] transition-colors`}><MapPin size={18} className={THEME.textMuted} /><input value={cliente.lugar} onChange={e => setCliente({ ...cliente, lugar: e.target.value })} placeholder="Ciudad" className={`bg-transparent w-full outline-none ${THEME.textMain} text-sm placeholder-[#999] font-medium`} /></div>
+                </div>
+
+                <div className="flex items-center gap-3 bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] focus-within:border-[#8B5E3C] transition-colors">
+                  <Phone size={18} className={THEME.textMuted} />
+                  <input value={cliente.telefono} onChange={e => setCliente({ ...cliente, telefono: e.target.value })} placeholder="WhatsApp (Opcional)" className={`bg-transparent w-full outline-none ${THEME.textMain} text-sm placeholder-[#999] font-medium`} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 bg-[#F9F7F2] p-1.5 rounded-xl border border-[#E0D8C3]">
@@ -1140,7 +1533,7 @@ const App = () => {
         {paso === 5 && (
           <div className="max-w-6xl mx-auto p-4 animate-fade-in">
             <div className="flex justify-between items-center mb-6">
-              <h2 className={`text-xl md:text-2xl font-light tracking-widest ${THEME.textMain} uppercase font-sans`}>Nuestros Trabajos</h2>
+              <h2 className={`text-xl md:text-2xl font-bold tracking-tight ${THEME.textMain} uppercase font-sans`}>Nuestros Trabajos</h2>
               <button
                 onClick={() => setShowReviews(true)}
                 className={`px-4 py-2 bg-white border border-[#8B5E3C] text-[#8B5E3C] rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-[#8B5E3C] hover:text-white transition-all shadow-sm flex items-center gap-2`}
@@ -1173,37 +1566,61 @@ const App = () => {
           </div>
         )}
 
-        {/* QUIENES SOMOS (Texto Completo Restaurado) */}
+        {/* QUIENES SOMOS (Mejorado) */}
         {paso === 6 && (
-          <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 animate-fade-in text-center max-w-2xl mx-auto">
-            <div className={`w-32 h-32 rounded-full bg-white border border-[#E0D8C3] flex items-center justify-center mb-8 shadow-sm`}>
-              <Users size={56} className={THEME.accent} />
+          <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 animate-fade-in text-center max-w-4xl mx-auto">
+            <div className={`w-32 h-32 rounded-full bg-white border border-[#E0D8C3] flex items-center justify-center mb-8 shadow-sm overflow-hidden p-2`}>
+              {aboutUsImageUrl ? (
+                <img src={getDirectDriveUrl(aboutUsImageUrl)} className="w-full h-full object-cover rounded-full" alt="Nosotros" />
+              ) : (
+                <Users size={56} className={THEME.accent} />
+              )}
             </div>
-            <h2 className={`text-4xl font-light uppercase tracking-widest ${THEME.textMain} mb-8 font-sans`}>Sobre Nosotros</h2>
+            <h2 className={`text-4xl font-bold uppercase tracking-tight ${THEME.textMain} mb-8 font-sans`}>Sobre Nosotros</h2>
+            <p className={`uppercase tracking-[0.2em] text-sm font-black ${THEME.accent} mb-6`}>Carpintería de Autor</p>
 
-            <p className={`uppercase tracking-[0.3em] text-xs font-bold ${THEME.accent} mb-6`}>Carpintería de Autor</p>
-
-            <div className="bg-white/80 backdrop-blur-md p-8 rounded-2xl border border-[#E0D8C3] shadow-sm space-y-6 text-[#1a1a1a] text-lg leading-relaxed font-light text-center">
-              <p>En <strong className="font-bold">eBe Muebles</strong> nos apasiona trabajar con <strong className="font-bold">madera maciza</strong> cuidadosamente seleccionada y proveniente de fuentes <strong className="font-bold">reforestadas</strong>. Cada corte, cada detalle, se realiza con profundo respeto por la materia prima y por la naturaleza que nos la entrega.</p>
-
-              <p>Combinamos la robustez y carácter del <strong className="font-bold">hierro</strong> con la calidez y vida de la <strong className="font-bold">madera natural</strong>, dando vida a piezas de gran resistencia que transmiten una estética industrial o moderna, siempre elegante y atemporal.</p>
-
-              <p>Además, ponemos toda nuestra precisión y tecnología al servicio del <strong className="font-bold">MDF y la melamina</strong>, logrando terminaciones impecables y soluciones que aprovechan al máximo cada centímetro, creando espacios funcionales, cómodos y pensados para vos.</p>
-
-              <p>Más que muebles, creamos el escenario donde se escriben tus mejores momentos: reuniones con amigos, desayunos en familia, tardes de trabajo inspiradas o simplemente el placer de llegar a casa.</p>
-
-              <p className={`italic ${THEME.textMuted} mt-6 border-t border-[#E0D8C3] pt-6`}>Te invitamos a descubrir piezas hechas con <strong className="font-bold text-[#8B5E3C]">dedicación, diseño y mucho cariño.</strong> 💛🪵</p>
+            <div className="bg-[#2C241F] p-10 rounded-3xl border border-[#3E2723] shadow-2xl space-y-6 text-[#E8DCCA] text-lg md:text-xl leading-relaxed font-light text-left relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[#E8DCCA] opacity-5 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
+              <p><strong className="text-white font-bold">En EBE Muebles</strong> somos un equipo dedicado al diseño y fabricación de muebles a medida de alta calidad, combinando funcionalidad, estética y durabilidad en cada proyecto. Nacemos con una visión clara: crear piezas únicas que respondan a las necesidades reales de cada cliente, respetando los espacios, los estilos y el uso cotidiano.</p>
+              <p>Nos especializamos en el desarrollo de muebles de madera maciza, hierro y combinaciones contemporáneas, trabajando con <span className="text-[#A1887F] font-bold">maderas reforestadas</span> provenientes de tala cuidada, seleccionadas por su resistencia, estabilidad y comportamiento a largo plazo. Este compromiso con los materiales no solo garantiza productos superiores, sino también una producción responsable con el medio ambiente.</p>
+              <p>Cada mueble es diseñado y fabricado de manera personalizada, acompañando al cliente desde la idea inicial hasta la entrega final, brindando asesoramiento técnico y estético en todo el proceso. Creemos que un buen mueble debe ser visualmente atractivo, funcional y, sobre todo, durable.</p>
+              <p>Contamos con <span className="text-[#A1887F] font-bold">fabricación propia</span>, lo que nos permite controlar cada etapa del proceso: diseño, selección de materiales, construcción, terminaciones e instalación. Esto asegura estándares de calidad constantes y resultados alineados a lo acordado.</p>
+              <p>En EBE Muebles desarrollamos soluciones para viviendas, oficinas, locales comerciales, emprendimientos gastronómicos y proyectos arquitectónicos, adaptándonos a diferentes escalas y necesidades, siempre con el mismo nivel de compromiso y detalle.</p>
+              <p className="italic text-white/80 text-center mt-6 border-t border-white/10 pt-6 font-medium">"Nuestro propósito es transformar ideas en piezas reales, creando muebles que acompañen la vida diaria y perduren en el tiempo."</p>
             </div>
 
             <div className="mt-12 flex justify-center">
-              <a
-                href={instagramUrl || DEFAULT_INSTAGRAM_URL}
-                target="_blank"
-                rel="noreferrer"
-                className={`px-10 py-4 rounded-xl border border-[#C13584] text-[#C13584] text-sm font-bold uppercase hover:bg-[#C13584] hover:text-white transition-colors flex items-center gap-2 shadow-sm`}
-              >
+              <a href={instagramUrl || DEFAULT_INSTAGRAM_URL} target="_blank" rel="noreferrer" className={`px-10 py-4 rounded-xl border border-[#C13584] text-[#C13584] text-sm font-bold uppercase hover:bg-[#C13584] hover:text-white transition-colors flex items-center gap-2 shadow-sm`}>
                 <Instagram size={20} /> Seguinos en Instagram
               </a>
+            </div>
+          </div>
+        )}
+
+        {/* CONTACTO (Nuevo Paso) */}
+        {paso === 7 && (
+          <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 animate-fade-in text-center max-w-2xl mx-auto">
+            <div className="bg-gradient-to-br from-white to-[#F9F7F2] p-10 rounded-3xl border border-[#D6C4B0] shadow-2xl w-full relative overflow-hidden">
+              <h2 className={`text-4xl font-bold uppercase tracking-tight ${THEME.textMain} mb-2 font-sans text-center`}>Hablemos</h2>
+              <p className="text-center text-[#666] mb-10 text-sm font-medium uppercase tracking-wide">Estamos listos para tu proyecto</p>
+
+              <div className="space-y-6">
+                <a href={`https://wa.me/${DATOS_CONTACTO.telefono_whatsapp}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-4 bg-[#25D366] text-white py-5 rounded-2xl font-bold text-lg shadow-lg hover:scale-[1.02] transition-transform w-full group">
+                  <MessageCircle size={28} className="group-hover:animate-bounce" /> WhatsApp Directo
+                </a>
+
+                <a href={instagramUrl || DEFAULT_INSTAGRAM_URL} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-4 bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] text-white py-5 rounded-2xl font-bold text-lg shadow-lg hover:scale-[1.02] transition-transform w-full group">
+                  <Instagram size={28} className="group-hover:rotate-12 transition-transform" /> Instagram
+                </a>
+
+                <a href={DATOS_CONTACTO.maps_link} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-4 bg-[#4285F4] text-white py-5 rounded-2xl font-bold text-lg shadow-lg hover:scale-[1.02] transition-transform w-full group">
+                  <MapPin size={28} className="group-hover:animate-bounce" />
+                  <div className="flex flex-col items-start leading-none">
+                    <span>Nuestro Taller</span>
+                    <span className="text-xs font-normal opacity-90 mt-1">Alta Gracia, Córdoba</span>
+                  </div>
+                </a>
+              </div>
             </div>
           </div>
         )}
