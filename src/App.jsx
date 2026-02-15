@@ -137,27 +137,27 @@ const DEFAULT_MELAMINAS_DB = [
   { id: 'm_blanco_tundra', nombre: 'Blanco Tundra', css: '#F0F0F0', category: 'lisos' },
 
   // Línea Nature
-  { id: 'm_caju', nombre: 'Cajú', css: '#B8A47E', category: 'nature' },
-  { id: 'm_gaudi', nombre: 'Gaudí', css: '#5D4B3F', category: 'nature' },
-  { id: 'm_mont_blanc', nombre: 'Mont Blanc', css: '#D4CFC9', category: 'nature' },
-  { id: 'm_teka_artico', nombre: 'Teka Ártico', css: '#E0E0E0', category: 'nature' },
-  { id: 'm_venezia', nombre: 'Venezia', css: '#D7D7D7', category: 'nature' },
-  { id: 'm_nogal_terracota', nombre: 'Nogal Terracota', css: '#8B6B40', category: 'nature' },
-  { id: 'm_carvalho_mezzo', nombre: 'Carvalho Mezzo', css: '#7A6553', category: 'nature' },
-  { id: 'm_nocce_milano', nombre: 'Nocce Milano', css: '#5C4033', category: 'nature' },
-  { id: 'm_blanco_nature', nombre: 'Blanco Nature', css: '#F5F5F5', category: 'nature' },
+  { id: 'm_caju', nombre: 'Cajú', css: 'linear-gradient(90deg, #B8A47E, #A6936E)', category: 'nature' },
+  { id: 'm_gaudi', nombre: 'Gaudí', css: 'linear-gradient(90deg, #5D4B3F, #4A3A30)', category: 'nature' },
+  { id: 'm_mont_blanc', nombre: 'Mont Blanc', css: 'linear-gradient(90deg, #D4CFC9, #C4BFB9)', category: 'nature' },
+  { id: 'm_teka_artico', nombre: 'Teka Ártico', css: 'linear-gradient(90deg, #E0E0E0, #D0D0D0)', category: 'nature' },
+  { id: 'm_venezia', nombre: 'Venezia', css: 'linear-gradient(90deg, #D7D7D7, #C7C7C7)', category: 'nature' },
+  { id: 'm_nogal_terracota', nombre: 'Nogal Terracota', css: 'linear-gradient(90deg, #8B6B40, #7A5A30)', category: 'nature' },
+  { id: 'm_carvalho_mezzo', nombre: 'Carvalho Mezzo', css: 'linear-gradient(90deg, #7A6553, #6A5543)', category: 'nature' },
+  { id: 'm_nocce_milano', nombre: 'Nocce Milano', css: 'linear-gradient(90deg, #5C4033, #4C3023)', category: 'nature' },
+  { id: 'm_blanco_nature', nombre: 'Blanco Nature', css: 'linear-gradient(90deg, #F5F5F5, #E5E5E5)', category: 'nature' },
 
   // Línea Mesopotamia
-  { id: 'm_petiribi_meso', nombre: 'Petiribí', css: '#8A6F45', category: 'mesopotamia' },
-  { id: 'm_yute', nombre: 'Yute', css: '#948C78', category: 'mesopotamia' },
+  { id: 'm_petiribi_meso', nombre: 'Petiribí', css: 'linear-gradient(90deg, #8A6F45, #7A5F35)', category: 'mesopotamia' },
+  { id: 'm_yute', nombre: 'Yute', css: 'repeating-linear-gradient(45deg, #948C78, #948C78 2px, #847C68 2px, #847C68 4px)', category: 'mesopotamia' },
   { id: 'm_terracota', nombre: 'Terracota', css: '#6E4D3A', category: 'mesopotamia' },
   { id: 'm_gris_caliza', nombre: 'Gris Caliza', css: '#9E9E9E', category: 'mesopotamia' },
   { id: 'm_gris_basalto', nombre: 'Gris Basalto', css: '#757575', category: 'mesopotamia' },
   { id: 'm_gris_tapir', nombre: 'Gris Tapir', css: '#8D8D8D', category: 'mesopotamia' },
   { id: 'm_amatista', nombre: 'Amatista', css: '#9C8AA5', category: 'mesopotamia' },
   { id: 'm_jade', nombre: 'Jade', css: '#7A8B7D', category: 'mesopotamia' },
-  { id: 'm_kiri_meso', nombre: 'Kiri', css: '#DCCBB2', category: 'mesopotamia' },
-  { id: 'm_paraiso_meso', nombre: 'Paraíso', css: '#C29F76', category: 'mesopotamia' },
+  { id: 'm_kiri_meso', nombre: 'Kiri', css: 'linear-gradient(90deg, #DCCBB2, #CCCBA2)', category: 'mesopotamia' },
+  { id: 'm_paraiso_meso', nombre: 'Paraíso', css: 'linear-gradient(90deg, #C29F76, #B28F66)', category: 'mesopotamia' },
 
   // Línea Étnica
   { id: 'm_tribal', nombre: 'Tribal', css: '#6D605B', category: 'etnica' },
@@ -168,29 +168,29 @@ const DEFAULT_MELAMINAS_DB = [
   { id: 'm_everest', nombre: 'Everest', css: '#D1D5D2', category: 'etnica' },
 
   // Línea Hilados
-  { id: 'm_seda_giorno', nombre: 'Seda Giorno', css: '#B0AB9F', category: 'hilados' },
-  { id: 'm_seda_notte', nombre: 'Seda Notte', css: '#7A726A', category: 'hilados' },
-  { id: 'm_seda_azzurra', nombre: 'Seda Azzurra', css: '#1B2E45', category: 'hilados' },
-  { id: 'm_lino_chiaro', nombre: 'Lino Chiaro', css: '#CFCBC5', category: 'hilados' },
-  { id: 'm_lino_blanco', nombre: 'Lino Blanco', css: '#EAEAEA', category: 'hilados' },
-  { id: 'm_lino_terra', nombre: 'Lino Terra', css: '#5E544A', category: 'hilados' },
-  { id: 'm_lino_negro', nombre: 'Lino Negro', css: '#1C1C1C', category: 'hilados' },
+  { id: 'm_seda_giorno', nombre: 'Seda Giorno', css: 'repeating-linear-gradient(45deg, #B0AB9F, #B0AB9F 2px, #A09B8F 2px, #A09B8F 4px)', category: 'hilados' },
+  { id: 'm_seda_notte', nombre: 'Seda Notte', css: 'repeating-linear-gradient(45deg, #7A726A, #7A726A 2px, #6A625A 2px, #6A625A 4px)', category: 'hilados' },
+  { id: 'm_seda_azzurra', nombre: 'Seda Azzurra', css: 'repeating-linear-gradient(45deg, #1B2E45, #1B2E45 2px, #0B1E35 2px, #0B1E35 4px)', category: 'hilados' },
+  { id: 'm_lino_chiaro', nombre: 'Lino Chiaro', css: 'repeating-linear-gradient(45deg, #CFCBC5, #CFCBC5 2px, #BFBBB5 2px, #BFBBB5 4px)', category: 'hilados' },
+  { id: 'm_lino_blanco', nombre: 'Lino Blanco', css: 'repeating-linear-gradient(45deg, #EAEAEA, #EAEAEA 2px, #DADADA 2px, #DADADA 4px)', category: 'hilados' },
+  { id: 'm_lino_terra', nombre: 'Lino Terra', css: 'repeating-linear-gradient(45deg, #5E544A, #5E544A 2px, #4E443A 2px, #4E443A 4px)', category: 'hilados' },
+  { id: 'm_lino_negro', nombre: 'Lino Negro', css: 'repeating-linear-gradient(45deg, #1C1C1C, #1C1C1C 2px, #0C0C0C 2px, #0C0C0C 4px)', category: 'hilados' },
 
   // Línea Urban Concept
-  { id: 'm_coliseo', nombre: 'Coliseo', css: '#6E665F', category: 'urban' },
-  { id: 'm_amberes', nombre: 'Amberes', css: '#2C2E33', category: 'urban' },
-  { id: 'm_viena', nombre: 'Viena', css: '#9E9E93', category: 'urban' },
-  { id: 'm_moscu', nombre: 'Moscú', css: '#4A3F39', category: 'urban' },
-  { id: 'm_praga', nombre: 'Praga', css: '#9C8C7C', category: 'urban' },
-  { id: 'm_street', nombre: 'Street', css: '#8C837B', category: 'urban' },
-  { id: 'm_home', nombre: 'Home', css: '#A8A49E', category: 'urban' },
+  { id: 'm_coliseo', nombre: 'Coliseo', css: 'linear-gradient(135deg, #6E665F, #5E564F)', category: 'urban' },
+  { id: 'm_amberes', nombre: 'Amberes', css: 'linear-gradient(135deg, #2C2E33, #1C1E23)', category: 'urban' },
+  { id: 'm_viena', nombre: 'Viena', css: 'linear-gradient(135deg, #9E9E93, #8E8E83)', category: 'urban' },
+  { id: 'm_moscu', nombre: 'Moscú', css: 'linear-gradient(135deg, #4A3F39, #3A2F29)', category: 'urban' },
+  { id: 'm_praga', nombre: 'Praga', css: 'linear-gradient(90deg, #9C8C7C, #8C7C6C)', category: 'urban' },
+  { id: 'm_street', nombre: 'Street', css: 'linear-gradient(135deg, #8C837B, #7C736B)', category: 'urban' },
+  { id: 'm_home', nombre: 'Home', css: 'linear-gradient(135deg, #A8A49E, #98948E)', category: 'urban' },
 
   // Línea Nórdica
   { id: 'm_helsinki', nombre: 'Helsinki', css: 'linear-gradient(90deg, #D7CFC4, #C9BEB0)', category: 'nordica' },
   { id: 'm_baltico', nombre: 'Báltico', css: 'linear-gradient(90deg, #8C8479, #756D63)', category: 'nordica' },
   { id: 'm_olmo_finlandes', nombre: 'Olmo Finlandés', css: 'linear-gradient(90deg, #C19A6B, #A67C52)', category: 'nordica' },
   { id: 'm_roble_escandinavo', nombre: 'Roble Escandinavo', css: 'linear-gradient(90deg, #C2B299, #AFA089)', category: 'nordica' },
-  { id: 'm_teka_oslo', nombre: 'Teka Oslo', css: '#594132', category: 'nordica' },
+  { id: 'm_teka_oslo', nombre: 'Teka Oslo', css: 'linear-gradient(90deg, #594132, #493122)', category: 'nordica' },
 ];
 
 const CATEGORIAS_MELAMINA = [
