@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import {
-  getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, updateDoc, writeBatch, getDocs, limit
+  getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, updateDoc, writeBatch, getDocs, limit, increment, serverTimestamp
 } from 'firebase/firestore';
 import {
   Ruler, TreePine, Palette, Send, ShoppingCart, Plus, Trash2, Settings,
@@ -11,7 +11,7 @@ import {
   RectangleVertical, Box, LogOut, Save, Coins, ImagePlus, Lock, MapPin,
   User, Paperclip, X, Check, Table, DoorOpen, ArrowLeft, Truck, Store, Map, Users,
   Square, Triangle, Star, FileText, MessageCircle, Instagram, Upload,
-  BarChart3, PieChart, Smartphone, Globe, Grid, RefreshCw, Phone, Mail, Navigation, Info
+  BarChart3, PieChart, Smartphone, Globe, Grid, RefreshCw, Phone, Mail, Navigation, Info, Edit, Link as LinkIcon, Eye
 } from 'lucide-react';
 
 // ==============================================================================
@@ -29,12 +29,13 @@ const userFirebaseConfig = {
 };
 
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userFirebaseConfig;
-const APP_ID_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'ebe-muebles-prod-v4';
+const APP_ID_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'ebe-muebles-prod-v5';
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// Helper para URLs de Drive y otros
 const getDirectDriveUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('data:image')) return url;
@@ -124,59 +125,15 @@ const DEFAULT_MADERAS = [
 ];
 
 const DEFAULT_MELAMINAS_DB = [
-  { id: 'm_ceniza', nombre: 'Ceniza', css: '#BDBDBD', category: 'lisos' },
-  { id: 'm_grafito', nombre: 'Grafito', css: '#37474F', category: 'lisos' },
+  { id: 'm_blanco', nombre: 'Blanco', css: '#FFFFFF', category: 'lisos' },
   { id: 'm_negro_profundo', nombre: 'Negro Profundo', css: '#101010', category: 'lisos' },
   { id: 'm_gris_humo', nombre: 'Gris Humo', css: '#9E9E9E', category: 'lisos' },
-  { id: 'm_almendra', nombre: 'Almendra', css: '#E6DCC3', category: 'lisos' },
-  { id: 'm_aluminio', nombre: 'Aluminio', css: '#A0A0A0', category: 'lisos' },
-  { id: 'm_litio', nombre: 'Litio', css: '#8D867D', category: 'lisos' },
-  { id: 'm_blanco', nombre: 'Blanco', css: '#FFFFFF', category: 'lisos' },
-  { id: 'm_blanco_tundra', nombre: 'Blanco Tundra', css: '#F0F0F0', category: 'lisos' },
   { id: 'm_caju', nombre: 'Cajú', css: '#B8A47E', category: 'nature' },
   { id: 'm_gaudi', nombre: 'Gaudí', css: '#5D4B3F', category: 'nature' },
-  { id: 'm_mont_blanc', nombre: 'Mont Blanc', css: '#D4CFC9', category: 'nature' },
-  { id: 'm_teka_artico', nombre: 'Teka Ártico', css: '#E0E0E0', category: 'nature' },
-  { id: 'm_venezia', nombre: 'Venezia', css: '#D7D7D7', category: 'nature' },
-  { id: 'm_nogal_terracota', nombre: 'Nogal Terracota', css: '#8B6B40', category: 'nature' },
-  { id: 'm_carvalho_mezzo', nombre: 'Carvalho Mezzo', css: '#7A6553', category: 'nature' },
-  { id: 'm_nocce_milano', nombre: 'Nocce Milano', css: '#5C4033', category: 'nature' },
-  { id: 'm_blanco_nature', nombre: 'Blanco Nature', css: '#F5F5F5', category: 'nature' },
   { id: 'm_petiribi_meso', nombre: 'Petiribí', css: '#8A6F45', category: 'mesopotamia' },
-  { id: 'm_yute', nombre: 'Yute', css: '#948C78', category: 'mesopotamia' },
-  { id: 'm_terracota', nombre: 'Terracota', css: '#6E4D3A', category: 'mesopotamia' },
-  { id: 'm_gris_caliza', nombre: 'Gris Caliza', css: '#9E9E9E', category: 'mesopotamia' },
-  { id: 'm_gris_basalto', nombre: 'Gris Basalto', css: '#757575', category: 'mesopotamia' },
-  { id: 'm_gris_tapir', nombre: 'Gris Tapir', css: '#8D8D8D', category: 'mesopotamia' },
-  { id: 'm_amatista', nombre: 'Amatista', css: '#9C8AA5', category: 'mesopotamia' },
-  { id: 'm_jade', nombre: 'Jade', css: '#7A8B7D', category: 'mesopotamia' },
-  { id: 'm_kiri_meso', nombre: 'Kiri', css: '#DCCBB2', category: 'mesopotamia' },
-  { id: 'm_paraiso_meso', nombre: 'Paraíso', css: '#C29F76', category: 'mesopotamia' },
-  { id: 'm_tribal', nombre: 'Tribal', css: '#6D605B', category: 'etnica' },
-  { id: 'm_sahara', nombre: 'Sahara', css: '#A3927F', category: 'etnica' },
-  { id: 'm_tuareg', nombre: 'Tuareg', css: '#1A242E', category: 'etnica' },
   { id: 'm_himalaya', nombre: 'Himalaya', css: '#B09A8B', category: 'etnica' },
-  { id: 'm_safari', nombre: 'Safari', css: '#4B533E', category: 'etnica' },
-  { id: 'm_everest', nombre: 'Everest', css: '#D1D5D2', category: 'etnica' },
-  { id: 'm_seda_giorno', nombre: 'Seda Giorno', css: '#B0AB9F', category: 'hilados' },
-  { id: 'm_seda_notte', nombre: 'Seda Notte', css: '#7A726A', category: 'hilados' },
-  { id: 'm_seda_azzurra', nombre: 'Seda Azzurra', css: '#1B2E45', category: 'hilados' },
-  { id: 'm_lino_chiaro', nombre: 'Lino Chiaro', css: '#CFCBC5', category: 'hilados' },
-  { id: 'm_lino_blanco', nombre: 'Lino Blanco', css: '#EAEAEA', category: 'hilados' },
-  { id: 'm_lino_terra', nombre: 'Lino Terra', css: '#5E544A', category: 'hilados' },
-  { id: 'm_lino_negro', nombre: 'Lino Negro', css: '#1C1C1C', category: 'hilados' },
   { id: 'm_coliseo', nombre: 'Coliseo', css: '#6E665F', category: 'urban' },
-  { id: 'm_amberes', nombre: 'Amberes', css: '#2C2E33', category: 'urban' },
-  { id: 'm_viena', nombre: 'Viena', css: '#9E9E93', category: 'urban' },
-  { id: 'm_moscu', nombre: 'Moscú', css: '#4A3F39', category: 'urban' },
-  { id: 'm_praga', nombre: 'Praga', css: '#9C8C7C', category: 'urban' },
-  { id: 'm_street', nombre: 'Street', css: '#8C837B', category: 'urban' },
-  { id: 'm_home', nombre: 'Home', css: '#A8A49E', category: 'urban' },
   { id: 'm_helsinki', nombre: 'Helsinki', css: 'linear-gradient(90deg, #D7CFC4, #C9BEB0)', category: 'nordica' },
-  { id: 'm_baltico', nombre: 'Báltico', css: 'linear-gradient(90deg, #8C8479, #756D63)', category: 'nordica' },
-  { id: 'm_olmo_finlandes', nombre: 'Olmo Finlandés', css: 'linear-gradient(90deg, #C19A6B, #A67C52)', category: 'nordica' },
-  { id: 'm_roble_escandinavo', nombre: 'Roble Escandinavo', css: 'linear-gradient(90deg, #C2B299, #AFA089)', category: 'nordica' },
-  { id: 'm_teka_oslo', nombre: 'Teka Oslo', css: '#594132', category: 'nordica' },
 ];
 
 const CATEGORIAS_MELAMINA = [
@@ -323,23 +280,18 @@ const InputMedida = ({ label, val, onChange }) => (
   </div>
 );
 
-// --- HELPER PARA OBTENER ESTILO VISUAL DEL MATERIAL ---
 const getMaterialVisual = (config, maderas, melaminas) => {
-  // Caso 1: Chapa Inyectada
   if (config.tipoConstruccion === 'chapa_inyectada') {
     const color = COLORES_CHAPA.find(c => c.id === config.chapa_color);
     return { type: 'css', value: color ? color.css : '#000' };
   }
-  // Caso 2: Puerta Placa
   if (config.tipoConstruccion === 'puerta_placa') {
-    return { type: 'img', value: maderas[0]?.src || '' }; // Usa madera básica por defecto
+    return { type: 'img', value: maderas[0]?.src || '' };
   }
-  // Caso 3: Melamina
   if (config.material && config.material.startsWith('m_')) {
     const melamina = melaminas.find(m => m.id === config.material);
     return { type: 'css', value: melamina ? melamina.css : '#fff' };
   }
-  // Caso 4: Madera Maciza
   const madera = maderas.find(m => m.id === config.material);
   return { type: 'img', value: madera ? madera.src : '' };
 };
@@ -364,8 +316,10 @@ const App = () => {
   const [instagramUrl, setInstagramUrl] = useState(DEFAULT_INSTAGRAM_URL);
   const [aboutUsImageUrl, setAboutUsImageUrl] = useState('');
 
+  // Analytics State
+  const [visitStats, setVisitStats] = useState({ mobile: 0, desktop: 0 });
+
   const [ordersList, setOrdersList] = useState([]);
-  const [visitStats, setVisitStats] = useState({ mobile: 0, desktop: 0, total: 0 });
   const [carrito, setCarrito] = useState([]);
 
   // Admin Inputs
@@ -374,6 +328,9 @@ const App = () => {
   const [adminInstagramInput, setAdminInstagramInput] = useState('');
   const [adminAboutUsImageInput, setAdminAboutUsImageInput] = useState('');
   const [newMelamina, setNewMelamina] = useState({ nombre: '', css: '#ffffff', category: 'lisos', isGradient: false });
+  const [editMaterialId, setEditMaterialId] = useState(null);
+  const [editMaterialData, setEditMaterialData] = useState({});
+
 
   // Flow State
   const [catSeleccionada, setCatSeleccionada] = useState(null);
@@ -395,7 +352,6 @@ const App = () => {
   const [modalType, setModalType] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
   const [showReviews, setShowReviews] = useState(false);
-  const [newReview, setNewReview] = useState({ nombre: '', texto: '', stars: 5 });
   const [showAi, setShowAi] = useState(false);
   const [aiQuery, setAiQuery] = useState('');
   const [aiResponse, setAiResponse] = useState('');
@@ -403,7 +359,14 @@ const App = () => {
 
   const isMDF = config.tipoConstruccion === 'placa';
   const fileInputRef = useRef(null);
-  const logoFileInputRef = useRef(null);
+
+  // Responsive Check
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const getHeaderTitle = () => {
     if (paso === 5) return "Galería";
@@ -436,6 +399,27 @@ const App = () => {
     initAuth();
     return onAuthStateChanged(auth, setUser);
   }, []);
+
+  // ANALYTICS & VISIT COUNTER
+  useEffect(() => {
+    if (!user) return;
+    const trackVisit = async () => {
+      const visitKey = `visit_${new Date().toISOString().split('T')[0]}_${user.uid}`;
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      try {
+        // Simply increment a counter in firestore
+        const statsRef = doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'stats', 'visits');
+        await setDoc(statsRef, {
+          [isMobileDevice ? 'mobile' : 'desktop']: increment(1)
+        }, { merge: true });
+      } catch (e) { console.warn("Analytics error", e); }
+    };
+    // Run once per session
+    if (!sessionStorage.getItem('visited')) {
+      trackVisit();
+      sessionStorage.setItem('visited', 'true');
+    }
+  }, [user]);
 
   // CARGAR DATOS FIRESTORE
   useEffect(() => {
@@ -473,6 +457,11 @@ const App = () => {
       (snap) => { if (snap.exists()) setCostos(snap.data()); }
     );
 
+    // Stats Listener
+    const unsubStats = onSnapshot(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'stats', 'visits'), (snap) => {
+      if (snap.exists()) setVisitStats(snap.data());
+    });
+
     let unsubOrders = () => { };
     if (isAdmin) {
       unsubOrders = onSnapshot(query(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'orders'), orderBy('createdAt', 'desc')),
@@ -480,9 +469,8 @@ const App = () => {
       );
     }
 
-    return () => { unsubGaleria(); unsubMaderas(); unsubMelaminas(); unsubCostos(); unsubOrders(); };
+    return () => { unsubGaleria(); unsubMaderas(); unsubMelaminas(); unsubCostos(); unsubOrders(); unsubStats(); };
   }, [user, isAdmin]);
-
 
   // --- ADMIN ACTIONS ---
   const handleAdminLogin = async () => {
@@ -519,36 +507,18 @@ const App = () => {
 
   const removeGalleryImage = async (id) => { if (isAdmin && typeof id === 'string') await deleteDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'gallery', id)); };
 
-  const addMelamina = async () => {
-    if (!isAdmin) return;
-    if (!newMelamina.nombre) return alert("Falta nombre");
-    try {
-      await addDoc(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'melamines'), {
-        ...newMelamina,
-        id: `m_${Date.now()}`,
-        createdAt: Date.now()
-      });
-      setNewMelamina({ nombre: '', css: '#ffffff', category: 'lisos', isGradient: false });
-    } catch (e) { console.error(e); }
+  // --- MATERIALS ADMIN ---
+  const startEditMaterial = (m) => {
+    setEditMaterialId(m.id);
+    setEditMaterialData({ ...m });
   };
 
-  const deleteMelamina = async (id) => { if (isAdmin) await deleteDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'melamines', id)); }
-
-  const restaurarMelaminasDefault = async () => {
-    if (!isAdmin) return;
-    if (!confirm("Esto borrará las melaminas actuales y cargará las por defecto. ¿Seguro?")) return;
-    const batch = writeBatch(db);
-    melaminas.forEach(m => {
-      if (m.id && typeof m.id === 'string' && m.id.length > 15) {
-        const ref = doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'melamines', m.id);
-        batch.delete(ref);
-      }
-    });
-    DEFAULT_MELAMINAS_DB.forEach(m => {
-      const ref = doc(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'melamines'));
-      batch.set(ref, m);
-    });
-    await batch.commit();
+  const saveMaterial = async () => {
+    if (!isAdmin || !editMaterialId) return;
+    try {
+      await setDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'materials', editMaterialId), editMaterialData, { merge: true });
+      setEditMaterialId(null);
+    } catch (e) { console.error(e); alert("Error al guardar material"); }
   };
 
   const handleCostoChange = (key, val) => {
@@ -561,7 +531,6 @@ const App = () => {
     await setDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'settings', 'costos'), costos);
     alert("Costos actualizados");
   };
-
 
   // --- LÓGICA DE NEGOCIO ---
   useEffect(() => {
@@ -703,8 +672,8 @@ const App = () => {
   const enviarWhatsapp = async () => {
     const total = carrito.reduce((a, b) => a + b.precio, 0);
 
-    // Obtener el siguiente ID secuencial
-    let nextOrderNumber = 1780; // Valor inicial
+    // Obtener el siguiente ID secuencial persistente
+    let nextOrderNumber = 1980; // Default inicial solicitado
     try {
       const q = query(
         collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'orders'),
@@ -714,7 +683,6 @@ const App = () => {
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
         const lastData = querySnapshot.docs[0].data();
-        // Asegurarnos de que existe el campo y es número
         if (typeof lastData.orderNumber === 'number') {
           nextOrderNumber = lastData.orderNumber + 1;
         }
@@ -723,11 +691,11 @@ const App = () => {
       console.error("Error obteniendo número de pedido, usando fallback", e);
     }
 
-    const pedidoId = nextOrderNumber; // Usamos el secuencial
+    // Auto-generar el PDF para que el usuario pueda enviarlo si lo desea
+    generarPresupuestoPDF(nextOrderNumber);
 
     const newOrder = {
-      id: pedidoId.toString(),
-      orderNumber: pedidoId, // Guardamos el número para la próxima query
+      orderNumber: nextOrderNumber,
       cliente,
       items: carrito,
       total,
@@ -735,26 +703,29 @@ const App = () => {
     };
 
     try {
+      // Guardar en Firestore para historial y contador
       await addDoc(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'orders'), newOrder);
     } catch (e) {
       console.error("Error guardando pedido", e);
     }
 
-    let text = `👋 Hola *eBe Muebles*, soy ${cliente.nombre}.\n📍 Desde: ${cliente.lugar} (${cliente.entrega === 'taller' ? 'Retiro en Taller' : 'Envío a domicilio'})\n📱 Tel: ${cliente.telefono || 'No especificado'}\n📋 *PEDIDO WEB #${pedidoId}*\n\n`;
+    let text = `👋 Hola *eBe Muebles*, soy ${cliente.nombre}.\n📍 Desde: ${cliente.lugar} (${cliente.entrega === 'taller' ? 'Retiro en Taller' : 'Envío a domicilio'})\n📱 Tel: ${cliente.telefono || 'No especificado'}\n📋 *PEDIDO WEB #${nextOrderNumber}*\n\n`;
     carrito.forEach(i => {
       text += `🔹 *${i.mueble.nombre}* (${i.config.ancho}x${i.config.largo}cm)\n   ${i.config.materialNombre}\n`;
       if (i.precio === 0) text += `   (A Cotizar)\n`;
     });
     text += `\n💰 *Total Estimado: $${new Intl.NumberFormat('es-AR').format(total)}*`;
-    if (cliente.nombreArchivo) text += `\n📎 Archivo adjunto: ${cliente.nombreArchivo}`;
+    text += `\n\n📄 *He descargado el presupuesto en PDF desde la web para adjuntarlo.*`;
+    if (cliente.nombreArchivo) text += `\n📎 Archivo adjunto (Plano/Foto): ${cliente.nombreArchivo}`;
+
     window.open(`https://wa.me/${DATOS_CONTACTO.telefono_whatsapp}?text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  const generarPresupuestoPDF = () => {
+  const generarPresupuestoPDF = (orderIdParam = null) => {
     const total = carrito.reduce((a, b) => a + b.precio, 0);
     const printWindow = window.open('', '_blank');
     const fecha = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const idPresupuesto = Math.floor(Math.random() * 100000);
+    const idPresupuesto = orderIdParam || 1980; // Fallback visual
     const logoSrc = getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC;
 
     const itemsHtml = carrito.map(item => {
@@ -766,13 +737,12 @@ const App = () => {
         visualHtml = `<span style="display:inline-block;width:24px;height:24px;border-radius:50%;background:${visual.value};vertical-align:middle;margin-right:8px;border:1px solid #ccc"></span>`;
       }
 
-      // Logic for finish label
       let acabadoLabel = '';
       if (item.config.acabado) {
         if (item.config.acabado === 'natural') acabadoLabel = 'Natural';
         else if (item.config.acabado === 'cetol') acabadoLabel = 'Impregnante (Cetol)';
         else if (item.config.acabado === 'laca') acabadoLabel = 'Laca Poliuretánica';
-        else acabadoLabel = item.config.acabado; // Fallback
+        else acabadoLabel = item.config.acabado;
       }
 
       const isPuerta = item.mueble.id?.includes('puerta') || item.mueble.id === 'puerta_custom';
@@ -808,7 +778,7 @@ const App = () => {
             @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800&family=Inter:wght@400;500;600&display=swap');
             @page { size: A4; margin: 0; }
             body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: #fff; color: #1a1a1a; -webkit-print-color-adjust: exact; width: 100%; }
-            .page-container { width: 100%; max-width: 210mm; margin: 0 auto; padding: 40px; box-sizing: border-box; position: relative; }
+            .page-container { width: 100%; max-width: 210mm; margin: 0 auto; padding: 40px; box-sizing: border-box; position: relative; min-height: 297mm; }
             .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 4px solid #5D4037; padding-bottom: 20px; }
             .logo-box img { height: 80px; object-fit: contain; }
             .doc-info { text-align: right; }
@@ -826,7 +796,7 @@ const App = () => {
             .totals-box { width: 300px; background: #F9F7F2; padding: 25px; border-radius: 8px; border: 1px solid #E0D8C3; }
             .total-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; color: #555; font-weight: 500; }
             .total-final { display: flex; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 2px solid #5D4037; font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 18px; color: #5D4037; }
-            .footer { margin-top: auto; padding-top: 30px; border-top: 1px solid #eee; font-size: 11px; color: #777; line-height: 1.6; text-align: justify; }
+            .footer { position: absolute; bottom: 40px; left: 40px; right: 40px; padding-top: 30px; border-top: 1px solid #eee; font-size: 11px; color: #777; line-height: 1.6; text-align: justify; }
             .footer h4 { font-family: 'Montserrat', sans-serif; font-size: 12px; color: #333; margin: 0 0 5px 0; font-weight: 700; }
             .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 100px; color: rgba(93, 64, 55, 0.04); font-family: 'Montserrat', sans-serif; font-weight: 900; z-index: -1; pointer-events: none; white-space: nowrap; }
           </style>
@@ -882,15 +852,16 @@ const App = () => {
           <span className="font-bold text-[#5D4037] text-lg hidden md:block uppercase tracking-wider">Admin</span>
         </div>
         <div className="flex-1 overflow-y-auto py-4">
-          {['dashboard', 'orders', 'gallery', 'prices', 'melaminas', 'config'].map(tab => (
+          {['dashboard', 'orders', 'gallery', 'prices', 'materials', 'melaminas', 'config'].map(tab => (
             <button key={tab} onClick={() => setAdminTab(tab)} className={`w-full flex items-center gap-3 p-4 md:px-6 hover:bg-[#F9F7F2] transition-colors ${adminTab === tab ? 'bg-[#F9F7F2] border-r-4 border-[#8B5E3C] text-[#5D4037]' : 'text-[#555]'}`}>
               {tab === 'dashboard' && <BarChart3 size={20} />}
               {tab === 'orders' && <ShoppingCart size={20} />}
               {tab === 'gallery' && <ImageIcon size={20} />}
               {tab === 'prices' && <Coins size={20} />}
+              {tab === 'materials' && <TreePine size={20} />}
               {tab === 'melaminas' && <Palette size={20} />}
               {tab === 'config' && <Settings size={20} />}
-              <span className="hidden md:block font-bold text-sm capitalize tracking-wide">{tab === 'orders' ? 'Pedidos' : tab}</span>
+              <span className="hidden md:block font-bold text-sm capitalize tracking-wide">{tab === 'orders' ? 'Pedidos' : tab === 'materials' ? 'Materiales' : tab}</span>
             </button>
           ))}
         </div>
@@ -901,7 +872,68 @@ const App = () => {
 
       {/* Content Admin */}
       <div className="flex-1 ml-20 md:ml-64 p-6 md:p-10 overflow-y-auto max-h-screen">
-        {adminTab === 'dashboard' && <div className="text-3xl font-bold text-[#333] mb-6">Panel de Control</div>}
+        {adminTab === 'dashboard' && (
+          <div className="space-y-6">
+            <div className="text-3xl font-bold text-[#333]">Panel de Control</div>
+
+            {/* Stats Widget */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
+                <h4 className="text-xs font-bold text-[#999] uppercase tracking-widest mb-2">Visitas Totales</h4>
+                <div className="text-4xl font-black text-[#5D4037]">{visitStats.mobile + visitStats.desktop}</div>
+                <div className="mt-4 text-xs font-medium text-gray-500 flex gap-4">
+                  <span className="flex items-center gap-1"><Smartphone size={14} /> {visitStats.mobile} Móvil</span>
+                  <span className="flex items-center gap-1"><Monitor size={14} /> {visitStats.desktop} PC</span>
+                </div>
+              </div>
+
+              <a href="https://analytics.google.com/" target="_blank" rel="noreferrer" className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-colors group">
+                <BarChart3 size={32} className="text-[#F4B400] mb-3 group-hover:scale-110 transition-transform" />
+                <h4 className="font-bold text-[#333]">Ir a Google Analytics</h4>
+                <p className="text-xs text-gray-500 mt-1">Ver métricas detalladas</p>
+              </a>
+            </div>
+          </div>
+        )}
+
+        {adminTab === 'materials' && (
+          <div className="space-y-6 max-w-5xl">
+            <div className="bg-white p-6 rounded-xl border border-[#E0D8C3]">
+              <h3 className="font-bold text-[#8B5E3C] uppercase text-sm mb-4 border-b pb-2">Editar Materiales (Maderas)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {maderas.map(m => (
+                  <div key={m.id} className="border border-gray-200 rounded-lg p-4 relative group hover:border-[#8B5E3C] transition-all bg-white">
+                    {editMaterialId === m.id ? (
+                      <div className="space-y-3">
+                        <div><label className="text-[10px] font-bold text-gray-400">Nombre</label><input className="w-full border p-1 rounded text-sm" value={editMaterialData.nombre} onChange={e => setEditMaterialData({ ...editMaterialData, nombre: e.target.value })} /></div>
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-400">Categoría Precio</label>
+                          <select className="w-full border p-1 rounded text-sm bg-white" value={editMaterialData.tier} onChange={e => setEditMaterialData({ ...editMaterialData, tier: e.target.value })}>
+                            <option value="basica">Básica</option>
+                            <option value="intermedia">Intermedia</option>
+                            <option value="premium">Premium</option>
+                          </select>
+                        </div>
+                        <div><label className="text-[10px] font-bold text-gray-400">URL Textura</label><input className="w-full border p-1 rounded text-sm" value={editMaterialData.src} onChange={e => setEditMaterialData({ ...editMaterialData, src: e.target.value })} /></div>
+                        <div className="flex gap-2 mt-2">
+                          <button onClick={saveMaterial} className="bg-green-600 text-white p-1.5 rounded text-xs font-bold flex-1">Guardar</button>
+                          <button onClick={() => setEditMaterialId(null)} className="bg-gray-300 text-gray-700 p-1.5 rounded text-xs font-bold flex-1">Cancelar</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="h-24 bg-gray-100 rounded mb-3 overflow-hidden"><img src={getDirectDriveUrl(m.src)} className="w-full h-full object-cover" /></div>
+                        <h4 className="font-bold text-[#333]">{m.nombre}</h4>
+                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full uppercase font-bold text-[10px]">{m.tier}</span>
+                        <button onClick={() => startEditMaterial(m)} className="absolute top-2 right-2 p-1.5 bg-white border rounded-full text-gray-500 hover:text-[#8B5E3C] hover:border-[#8B5E3C]"><Edit size={14} /></button>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {adminTab === 'orders' && (
           <div className="space-y-6 max-w-6xl">
@@ -911,9 +943,9 @@ const App = () => {
                 <table className="w-full text-sm text-left text-gray-500">
                   <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                     <tr>
+                      <th className="px-6 py-3">#</th>
                       <th className="px-6 py-3">Fecha</th>
                       <th className="px-6 py-3">Cliente</th>
-                      <th className="px-6 py-3">Contacto</th>
                       <th className="px-6 py-3">Items</th>
                       <th className="px-6 py-3 text-right">Total</th>
                     </tr>
@@ -921,15 +953,14 @@ const App = () => {
                   <tbody>
                     {ordersList.map(order => (
                       <tr key={order.id} className="bg-white border-b hover:bg-gray-50">
+                        <td className="px-6 py-4 font-bold text-[#5D4037]">#{order.orderNumber}</td>
                         <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
                           {new Date(order.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 font-bold text-[#333]">
                           {order.cliente.nombre}
                           <div className="text-xs font-normal text-gray-500">{order.cliente.lugar}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-1"><Phone size={12} /> {order.cliente.telefono || '-'}</div>
+                          <div className="flex items-center gap-1 text-xs text-gray-400 mt-1"><Phone size={10} /> {order.cliente.telefono || '-'}</div>
                         </td>
                         <td className="px-6 py-4">
                           {order.items.map((i, idx) => (
@@ -976,7 +1007,6 @@ const App = () => {
             <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
               <div className="flex justify-between items-center mb-4 border-b pb-2">
                 <h3 className="font-bold uppercase text-sm text-[#8B5E3C]">Gestión de Melaminas</h3>
-                <button onClick={restaurarMelaminasDefault} className="text-xs text-blue-600 flex items-center gap-1 hover:underline font-bold"><RefreshCw size={12} /> Restaurar Defaults</button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div className="flex flex-col gap-1">
@@ -996,7 +1026,7 @@ const App = () => {
                     <div className="w-10 h-10 rounded border" style={{ background: newMelamina.css }}></div>
                   </div>
                 </div>
-                <button onClick={addMelamina} className="bg-[#5D4037] text-white p-2 rounded font-bold text-sm h-10 hover:bg-[#3E2723]">AGREGAR</button>
+                <button onClick={() => { }} className="bg-[#5D4037] text-white p-2 rounded font-bold text-sm h-10 hover:bg-[#3E2723]">AGREGAR</button>
               </div>
             </div>
 
@@ -1010,7 +1040,7 @@ const App = () => {
                       <div className="text-[10px] text-gray-500 uppercase font-semibold">{CATEGORIAS_MELAMINA.find(c => c.id === m.category)?.label}</div>
                     </div>
                   </div>
-                  <button onClick={() => deleteMelamina(m.id)} className="text-red-300 hover:text-red-500"><Trash2 size={16} /></button>
+                  <button className="text-red-300 hover:text-red-500"><Trash2 size={16} /></button>
                 </div>
               ))}
             </div>
@@ -1156,20 +1186,21 @@ const App = () => {
           </div>
         )}
 
-        {/* CATEGORIAS */}
+        {/* CATEGORIAS (Grid en PC, Lista en Celu) */}
         {paso === 1 && (
           <div className="min-h-[85vh] flex flex-col justify-center max-w-4xl mx-auto p-4 md:p-6 animate-fade-in">
-            <div className="grid grid-cols-3 gap-2 md:gap-4">
+            <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-3 gap-6'}`}>
               {CATEGORIAS_PRINCIPALES.map(cat => (
                 <button key={cat.id} onClick={() => { setCatSeleccionada(cat); if (cat.destino === 'directo') { setMuebleSeleccionado(cat.item); setPaso(3); } else { setPaso(2); } }}
-                  className={`${THEME.card} aspect-[4/5] rounded-2xl p-2 md:p-4 flex flex-col items-center justify-center gap-2 md:gap-4 group hover:-translate-y-1 transition-all duration-500 relative overflow-hidden shadow-sm hover:shadow-md`}>
+                  className={`${THEME.card} ${isMobile ? 'py-6 px-6 flex-row justify-start gap-6' : 'aspect-[4/5] flex-col justify-center gap-4'} rounded-2xl p-4 flex items-center group hover:-translate-y-1 transition-all duration-500 relative overflow-hidden shadow-sm hover:shadow-md`}>
                   <div className={`p-3 md:p-4 rounded-full bg-[#F9F7F2] border border-[#E0D8C3] ${THEME.accent} relative z-10 shadow-sm group-hover:scale-110 transition-transform duration-500`}>
                     <IconRenderer name={cat.icon} size={24} className="md:w-8 md:h-8" />
                   </div>
-                  <h2 className={`text-[10px] md:text-sm font-bold uppercase tracking-widest relative z-10 ${THEME.textMain} font-sans`}>{cat.label}</h2>
-                  <div className={`absolute bottom-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${THEME.primaryText}`}>
+                  <h2 className={`text-sm md:text-sm font-bold uppercase tracking-widest relative z-10 ${THEME.textMain} font-sans`}>{cat.label}</h2>
+                  {!isMobile && <div className={`absolute bottom-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${THEME.primaryText}`}>
                     <ChevronRight size={16} />
-                  </div>
+                  </div>}
+                  {isMobile && <ChevronRight size={16} className={`ml-auto ${THEME.textMuted}`} />}
                 </button>
               ))}
             </div>
@@ -1285,7 +1316,6 @@ const App = () => {
                 {isMDF ? (
                   <div className="grid grid-cols-1 gap-3">
                     <button onClick={() => setConfig({ ...config, material: 'm_blanco' })} className={`p-4 rounded-xl border flex items-center justify-between transition-all ${config.material === 'm_blanco' ? `${THEME.primary} text-white border-transparent shadow-md` : 'border-[#E0D8C3] bg-transparent text-[#666]'}`}><span className="font-bold text-sm">Blanco Clásico</span> <div className="w-6 h-6 rounded-full bg-white border border-[#E0D8C3]"></div></button>
-                    {/* Botón Mejorado con Preview de Selección */}
                     <button onClick={() => { setModalType('all'); setShowMaterialModal(true) }} className={`p-4 rounded-xl border transition-all flex items-center justify-between ${config.material.startsWith('m_') && config.material !== 'm_blanco' ? `${THEME.accentBorder} bg-[#F9F7F2] ring-1 ring-[#8B5E3C]` : 'border-[#E0D8C3] bg-transparent hover:bg-[#F9F7F2]'}`}>
                       <div className="flex items-center gap-3">
                         <Grid size={20} className={THEME.textMuted} />
@@ -1295,7 +1325,6 @@ const App = () => {
                             : 'Seleccionar Diseño (Colores/Texturas)'}
                         </span>
                       </div>
-                      {/* Mini Preview si hay selección */}
                       {config.material.startsWith('m_') && config.material !== 'm_blanco' && (
                         <div className="w-8 h-8 rounded-lg border border-[#E0D8C3] shadow-sm" style={{ background: melaminas.find(m => m.id === config.material)?.css }}></div>
                       )}
@@ -1303,18 +1332,19 @@ const App = () => {
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  // Aquí es donde mejoramos la visualización de las maderas
+                  <div className="grid grid-cols-2 gap-4">
                     {materialesPosibles.map(m => {
                       const textureData = m.textura;
                       return (
-                        <button key={m.id} onClick={() => setConfig({ ...config, material: m.id })} className={`relative h-24 rounded-xl overflow-hidden border transition-all group ${config.material === m.id ? `${THEME.accentBorder} ring-2 ring-[#5D4037] ring-offset-2 ring-offset-[#F2E9D8]` : 'border-[#E0D8C3] hover:opacity-100 opacity-90'}`}>
+                        <button key={m.id} onClick={() => setConfig({ ...config, material: m.id })} className={`relative h-32 md:h-40 rounded-xl overflow-hidden border transition-all group ${config.material === m.id ? `${THEME.accentBorder} ring-2 ring-[#5D4037] ring-offset-2 ring-offset-[#F2E9D8]` : 'border-[#E0D8C3]'}`}>
                           {textureData.type === 'img' ? (
                             <img src={textureData.src} className="absolute inset-0 w-full h-full object-cover" alt={m.nombre} referrerPolicy="no-referrer" />
                           ) : (
                             <div className="absolute inset-0" style={{ background: textureData.css }}></div>
                           )}
-                          <div className="absolute inset-0 bg-black/40 flex items-end justify-center p-3">
-                            <span className="text-[10px] md:text-xs font-bold uppercase tracking-wide text-white text-center shadow-sm">{m.nombre}</span>
+                          <div className="absolute bottom-0 left-0 right-0 bg-white/90 py-2 px-3 border-t border-[#E0D8C3]">
+                            <span className="text-xs font-bold uppercase tracking-wide text-[#333] block text-center">{m.nombre}</span>
                           </div>
                         </button>
                       );
@@ -1381,46 +1411,24 @@ const App = () => {
               )}
             </section>
 
-            {/* ESPECIFICACIONES TÉCNICAS (Nuevo Bloque) */}
             {muebleSeleccionado?.id?.includes('puerta') && (
               <div className="bg-[#2C241F] text-[#E8DCCA] p-6 rounded-2xl mb-8 shadow-xl border border-[#3E2723] relative overflow-hidden">
-                {/* Decorative background element */}
                 <div className="absolute top-0 right-0 w-24 h-24 bg-[#E8DCCA]/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
-
                 <div className="flex items-center gap-2 mb-4 text-white font-bold text-xs uppercase tracking-[0.2em] border-b border-[#E8DCCA]/10 pb-3">
                   <Info size={16} className="text-[#8B5E3C]" /> Especificaciones Técnicas
                 </div>
-
                 <ul className="space-y-3 text-sm font-light">
                   {config.uso === 'exterior' ? (
                     <>
-                      <li className="flex items-start gap-3">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#8B5E3C] mt-1.5 shrink-0"></div>
-                        <span><strong className="text-white font-medium">Estructura:</strong> Alma de acero reforzada.</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#8B5E3C] mt-1.5 shrink-0"></div>
-                        <span><strong className="text-white font-medium">Herrajes:</strong> Bisagra pivotante o reforzada, cerradura de seguridad.</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#8B5E3C] mt-1.5 shrink-0"></div>
-                        <span><strong className="text-white font-medium">Accesorios:</strong> Manija interior y manijón exterior incluidos.</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#8B5E3C] mt-1.5 shrink-0"></div>
-                        <span><strong className="text-white font-medium">Espesor Total:</strong> 3 pulgadas.</span>
-                      </li>
+                      <li className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-[#8B5E3C] mt-1.5 shrink-0"></div><span><strong className="text-white font-medium">Estructura:</strong> Alma de acero reforzada.</span></li>
+                      <li className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-[#8B5E3C] mt-1.5 shrink-0"></div><span><strong className="text-white font-medium">Herrajes:</strong> Bisagra pivotante o reforzada, cerradura de seguridad.</span></li>
+                      <li className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-[#8B5E3C] mt-1.5 shrink-0"></div><span><strong className="text-white font-medium">Accesorios:</strong> Manija interior y manijón exterior incluidos.</span></li>
+                      <li className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-[#8B5E3C] mt-1.5 shrink-0"></div><span><strong className="text-white font-medium">Espesor Total:</strong> 3 pulgadas.</span></li>
                     </>
                   ) : (
                     <>
-                      <li className="flex items-start gap-3">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#8B5E3C] mt-1.5 shrink-0"></div>
-                        <span><strong className="text-white font-medium">Herrajes:</strong> Bisagras y manijas incluidas.</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#8B5E3C] mt-1.5 shrink-0"></div>
-                        <span><strong className="text-white font-medium">Espesor Total:</strong> 2 pulgadas.</span>
-                      </li>
+                      <li className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-[#8B5E3C] mt-1.5 shrink-0"></div><span><strong className="text-white font-medium">Herrajes:</strong> Bisagras y manijas incluidas.</span></li>
+                      <li className="flex items-start gap-3"><div className="w-1.5 h-1.5 rounded-full bg-[#8B5E3C] mt-1.5 shrink-0"></div><span><strong className="text-white font-medium">Espesor Total:</strong> 2 pulgadas.</span></li>
                     </>
                   )}
                 </ul>
@@ -1446,7 +1454,6 @@ const App = () => {
           <div className="max-w-2xl mx-auto p-4 md:p-6 animate-fade-in pb-10">
             <div className="space-y-4 mb-8">
               {carrito.map(item => {
-                // Determine visual representation
                 const visual = getMaterialVisual(item.config, maderas, melaminas);
                 return (
                   <div key={item.id} className={`${THEME.card} p-5 rounded-2xl flex gap-5 group relative`}>
@@ -1485,9 +1492,18 @@ const App = () => {
                   <div className={`flex items-center gap-3 bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] focus-within:border-[#8B5E3C] transition-colors`}><MapPin size={18} className={THEME.textMuted} /><input value={cliente.lugar} onChange={e => setCliente({ ...cliente, lugar: e.target.value })} placeholder="Ciudad" className={`bg-transparent w-full outline-none ${THEME.textMain} text-sm placeholder-[#999] font-medium`} /></div>
                 </div>
 
+                {/* TELEFONO MEJORADO */}
                 <div className="flex items-center gap-3 bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] focus-within:border-[#8B5E3C] transition-colors">
                   <Phone size={18} className={THEME.textMuted} />
-                  <input value={cliente.telefono} onChange={e => setCliente({ ...cliente, telefono: e.target.value })} placeholder="WhatsApp (Opcional)" className={`bg-transparent w-full outline-none ${THEME.textMain} text-sm placeholder-[#999] font-medium`} />
+                  <input
+                    type="tel"
+                    pattern="[0-9]*"
+                    inputMode="numeric"
+                    value={cliente.telefono}
+                    onChange={e => setCliente({ ...cliente, telefono: e.target.value })}
+                    placeholder={cliente.telefono ? '' : '+543547531519'}
+                    className={`bg-transparent w-full outline-none ${THEME.textMain} text-sm placeholder-[#999] font-medium`}
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 bg-[#F9F7F2] p-1.5 rounded-xl border border-[#E0D8C3]">
@@ -1517,7 +1533,7 @@ const App = () => {
                   <span className={`text-3xl md:text-4xl font-bold ${THEME.textMain} tracking-tight font-sans`}>${new Intl.NumberFormat('es-AR').format(carrito.reduce((a, b) => a + b.precio, 0))}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-4 w-full">
-                  <button onClick={generarPresupuestoPDF} className={`w-full py-4 rounded-xl font-bold uppercase text-[#5D4037] border border-[#5D4037] hover:bg-[#5D4037] hover:text-white transition-all flex items-center justify-center gap-2 text-xs md:text-sm`}>
+                  <button onClick={() => generarPresupuestoPDF(null)} className={`w-full py-4 rounded-xl font-bold uppercase text-[#5D4037] border border-[#5D4037] hover:bg-[#5D4037] hover:text-white transition-all flex items-center justify-center gap-2 text-xs md:text-sm`}>
                     <FileText size={20} /> Descargar PDF
                   </button>
                   <button onClick={enviarWhatsapp} disabled={!cliente.nombre} className={`w-full py-4 rounded-xl font-bold uppercase text-white shadow-lg flex items-center justify-center gap-2 transition-all ${cliente.nombre ? `${THEME.primary} hover:${THEME.primaryHover} shadow-[#5D4037]/30` : 'bg-[#E0D8C3] cursor-not-allowed text-[#999]'} text-xs md:text-sm`}>
@@ -1532,14 +1548,23 @@ const App = () => {
         {/* GALERIA */}
         {paso === 5 && (
           <div className="max-w-6xl mx-auto p-4 animate-fade-in">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className={`text-xl md:text-2xl font-bold tracking-tight ${THEME.textMain} uppercase font-sans`}>Nuestros Trabajos</h2>
+            <h2 className={`text-xl md:text-2xl font-bold tracking-tight ${THEME.textMain} uppercase font-sans mb-6`}>Nuestros Trabajos</h2>
+
+            <div className="grid grid-cols-2 gap-4 mb-8">
               <button
                 onClick={() => setShowReviews(true)}
-                className={`px-4 py-2 bg-white border border-[#8B5E3C] text-[#8B5E3C] rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-[#8B5E3C] hover:text-white transition-all shadow-sm flex items-center gap-2`}
+                className={`py-3 px-4 rounded-lg bg-white border border-[#8B5E3C] text-[#8B5E3C] font-semibold text-xs md:text-sm uppercase tracking-wider hover:bg-[#8B5E3C] hover:text-white transition-all shadow-sm flex flex-row items-center justify-center gap-2`}
               >
-                <MessageCircle size={16} /> RESEÑAS
+                <MessageCircle size={18} /> RESEÑAS
               </button>
+              <a
+                href={instagramUrl || DEFAULT_INSTAGRAM_URL}
+                target="_blank"
+                rel="noreferrer"
+                className={`py-3 px-4 rounded-lg border border-[#C13584] bg-white text-[#C13584] font-semibold text-xs md:text-sm uppercase hover:bg-[#C13584] hover:text-white transition-all shadow-sm flex flex-row items-center justify-center gap-2`}
+              >
+                <Instagram size={18} /> INSTAGRAM
+              </a>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-16">
@@ -1552,21 +1577,10 @@ const App = () => {
                 </div>
               ))}
             </div>
-
-            <div className="mt-8 flex justify-center">
-              <a
-                href={instagramUrl || DEFAULT_INSTAGRAM_URL}
-                target="_blank"
-                rel="noreferrer"
-                className={`px-6 py-3 rounded-xl border border-[#C13584] text-[#C13584] text-xs font-bold uppercase hover:bg-[#C13584] hover:text-white transition-colors flex items-center gap-2 shadow-sm`}
-              >
-                <Instagram size={18} /> Seguinos en Instagram
-              </a>
-            </div>
           </div>
         )}
 
-        {/* QUIENES SOMOS (Mejorado) */}
+        {/* QUIENES SOMOS (Compacto en móvil) */}
         {paso === 6 && (
           <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 animate-fade-in text-center max-w-4xl mx-auto">
             <div className={`w-32 h-32 rounded-full bg-white border border-[#E0D8C3] flex items-center justify-center mb-8 shadow-sm overflow-hidden p-2`}>
@@ -1576,11 +1590,11 @@ const App = () => {
                 <Users size={56} className={THEME.accent} />
               )}
             </div>
-            <h2 className={`text-4xl font-bold uppercase tracking-tight ${THEME.textMain} mb-8 font-sans`}>Sobre Nosotros</h2>
-            <p className={`uppercase tracking-[0.2em] text-sm font-black ${THEME.accent} mb-6`}>Carpintería de Autor</p>
+            <h2 className={`text-3xl md:text-4xl font-bold uppercase tracking-tight ${THEME.textMain} mb-4 font-sans`}>Sobre Nosotros</h2>
+            <p className={`uppercase tracking-[0.2em] text-xs font-black ${THEME.accent} mb-6`}>Carpintería de Autor</p>
 
-            <div className="bg-[#2C241F] p-10 rounded-3xl border border-[#3E2723] shadow-2xl space-y-6 text-[#E8DCCA] text-lg md:text-xl leading-relaxed font-light text-left relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-[#E8DCCA] opacity-5 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
+            <div className={`${isMobile ? 'p-6 text-sm space-y-3' : 'p-10 text-lg space-y-6'} bg-[#2C241F] rounded-3xl border border-[#3E2723] shadow-2xl text-[#E8DCCA] leading-relaxed font-light text-left relative overflow-hidden transition-all duration-300`}>
+              {!isMobile && <div className="absolute top-0 right-0 w-64 h-64 bg-[#E8DCCA] opacity-5 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2"></div>}
               <p><strong className="text-white font-bold">En EBE Muebles</strong> somos un equipo dedicado al diseño y fabricación de muebles a medida de alta calidad, combinando funcionalidad, estética y durabilidad en cada proyecto. Nacemos con una visión clara: crear piezas únicas que respondan a las necesidades reales de cada cliente, respetando los espacios, los estilos y el uso cotidiano.</p>
               <p>Nos especializamos en el desarrollo de muebles de madera maciza, hierro y combinaciones contemporáneas, trabajando con <span className="text-[#A1887F] font-bold">maderas reforestadas</span> provenientes de tala cuidada, seleccionadas por su resistencia, estabilidad y comportamiento a largo plazo. Este compromiso con los materiales no solo garantiza productos superiores, sino también una producción responsable con el medio ambiente.</p>
               <p>Cada mueble es diseñado y fabricado de manera personalizada, acompañando al cliente desde la idea inicial hasta la entrega final, brindando asesoramiento técnico y estético en todo el proceso. Creemos que un buen mueble debe ser visualmente atractivo, funcional y, sobre todo, durable.</p>
@@ -1597,7 +1611,7 @@ const App = () => {
           </div>
         )}
 
-        {/* CONTACTO (Nuevo Paso) */}
+        {/* CONTACTO */}
         {paso === 7 && (
           <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 animate-fade-in text-center max-w-2xl mx-auto">
             <div className="bg-gradient-to-br from-white to-[#F9F7F2] p-10 rounded-3xl border border-[#D6C4B0] shadow-2xl w-full relative overflow-hidden">
@@ -1616,7 +1630,7 @@ const App = () => {
                 <a href={DATOS_CONTACTO.maps_link} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-4 bg-[#4285F4] text-white py-5 rounded-2xl font-bold text-lg shadow-lg hover:scale-[1.02] transition-transform w-full group">
                   <MapPin size={28} className="group-hover:animate-bounce" />
                   <div className="flex flex-col items-start leading-none">
-                    <span>Nuestro Taller</span>
+                    <span>Ubicación Taller</span>
                     <span className="text-xs font-normal opacity-90 mt-1">Alta Gracia, Córdoba</span>
                   </div>
                 </a>
