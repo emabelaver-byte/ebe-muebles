@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import {
@@ -125,15 +125,72 @@ const DEFAULT_MADERAS = [
 ];
 
 const DEFAULT_MELAMINAS_DB = [
-  { id: 'm_blanco', nombre: 'Blanco', css: '#FFFFFF', category: 'lisos' },
+  // Línea Lisos
+  { id: 'm_ceniza', nombre: 'Ceniza', css: '#BDBDBD', category: 'lisos' },
+  { id: 'm_grafito', nombre: 'Grafito', css: '#37474F', category: 'lisos' },
   { id: 'm_negro_profundo', nombre: 'Negro Profundo', css: '#101010', category: 'lisos' },
   { id: 'm_gris_humo', nombre: 'Gris Humo', css: '#9E9E9E', category: 'lisos' },
+  { id: 'm_almendra', nombre: 'Almendra', css: '#E6DCC3', category: 'lisos' },
+  { id: 'm_aluminio', nombre: 'Aluminio', css: '#A0A0A0', category: 'lisos' },
+  { id: 'm_litio', nombre: 'Litio', css: '#8D867D', category: 'lisos' },
+  { id: 'm_blanco', nombre: 'Blanco', css: '#FFFFFF', category: 'lisos' },
+  { id: 'm_blanco_tundra', nombre: 'Blanco Tundra', css: '#F0F0F0', category: 'lisos' },
+
+  // Línea Nature
   { id: 'm_caju', nombre: 'Cajú', css: '#B8A47E', category: 'nature' },
   { id: 'm_gaudi', nombre: 'Gaudí', css: '#5D4B3F', category: 'nature' },
+  { id: 'm_mont_blanc', nombre: 'Mont Blanc', css: '#D4CFC9', category: 'nature' },
+  { id: 'm_teka_artico', nombre: 'Teka Ártico', css: '#E0E0E0', category: 'nature' },
+  { id: 'm_venezia', nombre: 'Venezia', css: '#D7D7D7', category: 'nature' },
+  { id: 'm_nogal_terracota', nombre: 'Nogal Terracota', css: '#8B6B40', category: 'nature' },
+  { id: 'm_carvalho_mezzo', nombre: 'Carvalho Mezzo', css: '#7A6553', category: 'nature' },
+  { id: 'm_nocce_milano', nombre: 'Nocce Milano', css: '#5C4033', category: 'nature' },
+  { id: 'm_blanco_nature', nombre: 'Blanco Nature', css: '#F5F5F5', category: 'nature' },
+
+  // Línea Mesopotamia
   { id: 'm_petiribi_meso', nombre: 'Petiribí', css: '#8A6F45', category: 'mesopotamia' },
+  { id: 'm_yute', nombre: 'Yute', css: '#948C78', category: 'mesopotamia' },
+  { id: 'm_terracota', nombre: 'Terracota', css: '#6E4D3A', category: 'mesopotamia' },
+  { id: 'm_gris_caliza', nombre: 'Gris Caliza', css: '#9E9E9E', category: 'mesopotamia' },
+  { id: 'm_gris_basalto', nombre: 'Gris Basalto', css: '#757575', category: 'mesopotamia' },
+  { id: 'm_gris_tapir', nombre: 'Gris Tapir', css: '#8D8D8D', category: 'mesopotamia' },
+  { id: 'm_amatista', nombre: 'Amatista', css: '#9C8AA5', category: 'mesopotamia' },
+  { id: 'm_jade', nombre: 'Jade', css: '#7A8B7D', category: 'mesopotamia' },
+  { id: 'm_kiri_meso', nombre: 'Kiri', css: '#DCCBB2', category: 'mesopotamia' },
+  { id: 'm_paraiso_meso', nombre: 'Paraíso', css: '#C29F76', category: 'mesopotamia' },
+
+  // Línea Étnica
+  { id: 'm_tribal', nombre: 'Tribal', css: '#6D605B', category: 'etnica' },
+  { id: 'm_sahara', nombre: 'Sahara', css: '#A3927F', category: 'etnica' },
+  { id: 'm_tuareg', nombre: 'Tuareg', css: '#1A242E', category: 'etnica' },
   { id: 'm_himalaya', nombre: 'Himalaya', css: '#B09A8B', category: 'etnica' },
+  { id: 'm_safari', nombre: 'Safari', css: '#4B533E', category: 'etnica' },
+  { id: 'm_everest', nombre: 'Everest', css: '#D1D5D2', category: 'etnica' },
+
+  // Línea Hilados
+  { id: 'm_seda_giorno', nombre: 'Seda Giorno', css: '#B0AB9F', category: 'hilados' },
+  { id: 'm_seda_notte', nombre: 'Seda Notte', css: '#7A726A', category: 'hilados' },
+  { id: 'm_seda_azzurra', nombre: 'Seda Azzurra', css: '#1B2E45', category: 'hilados' },
+  { id: 'm_lino_chiaro', nombre: 'Lino Chiaro', css: '#CFCBC5', category: 'hilados' },
+  { id: 'm_lino_blanco', nombre: 'Lino Blanco', css: '#EAEAEA', category: 'hilados' },
+  { id: 'm_lino_terra', nombre: 'Lino Terra', css: '#5E544A', category: 'hilados' },
+  { id: 'm_lino_negro', nombre: 'Lino Negro', css: '#1C1C1C', category: 'hilados' },
+
+  // Línea Urban Concept
   { id: 'm_coliseo', nombre: 'Coliseo', css: '#6E665F', category: 'urban' },
+  { id: 'm_amberes', nombre: 'Amberes', css: '#2C2E33', category: 'urban' },
+  { id: 'm_viena', nombre: 'Viena', css: '#9E9E93', category: 'urban' },
+  { id: 'm_moscu', nombre: 'Moscú', css: '#4A3F39', category: 'urban' },
+  { id: 'm_praga', nombre: 'Praga', css: '#9C8C7C', category: 'urban' },
+  { id: 'm_street', nombre: 'Street', css: '#8C837B', category: 'urban' },
+  { id: 'm_home', nombre: 'Home', css: '#A8A49E', category: 'urban' },
+
+  // Línea Nórdica
   { id: 'm_helsinki', nombre: 'Helsinki', css: 'linear-gradient(90deg, #D7CFC4, #C9BEB0)', category: 'nordica' },
+  { id: 'm_baltico', nombre: 'Báltico', css: 'linear-gradient(90deg, #8C8479, #756D63)', category: 'nordica' },
+  { id: 'm_olmo_finlandes', nombre: 'Olmo Finlandés', css: 'linear-gradient(90deg, #C19A6B, #A67C52)', category: 'nordica' },
+  { id: 'm_roble_escandinavo', nombre: 'Roble Escandinavo', css: 'linear-gradient(90deg, #C2B299, #AFA089)', category: 'nordica' },
+  { id: 'm_teka_oslo', nombre: 'Teka Oslo', css: '#594132', category: 'nordica' },
 ];
 
 const CATEGORIAS_MELAMINA = [
@@ -206,7 +263,7 @@ const ACABADOS_CHAPA = [
 ];
 
 // ==============================================================================
-//  2. COMPONENTES VISUALES
+//  2. COMPONENTES VISUALES (OPTIMIZADOS)
 // ==============================================================================
 
 const GlobalStyles = () => (
@@ -227,18 +284,18 @@ const GlobalStyles = () => (
   `}</style>
 );
 
-const BackgroundAmbience = () => (
+const BackgroundAmbience = React.memo(() => (
   <div className="fixed inset-0 z-[-1] overflow-hidden bg-[#E8DCCA] pointer-events-none">
     <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent"></div>
     <div className="absolute inset-0 opacity-[0.3]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E")` }}></div>
   </div>
-);
+));
 
-const Header = ({ onBack, title, onLogoClick, showCart, cartCount, onCartClick, logoUrl }) => (
+const Header = React.memo(({ onBack, title, onLogoClick, showCart, cartCount, onCartClick, logoUrl }) => (
   <header className="sticky top-0 z-20 backdrop-blur-md bg-[#E8DCCA]/90 border-b border-[#D6C4B0] py-4 px-4 flex justify-between items-center transition-all">
     <div className="flex items-center gap-3">
       {onBack && (
-        <button onClick={onBack} className={`p-2.5 rounded-full hover:bg-white/50 ${THEME.textMain} transition-colors active:scale-95`}>
+        <button onClick={onBack} aria-label="Volver" className={`p-2.5 rounded-full hover:bg-white/50 ${THEME.textMain} transition-colors active:scale-95`}>
           <ArrowLeft size={22} />
         </button>
       )}
@@ -246,7 +303,7 @@ const Header = ({ onBack, title, onLogoClick, showCart, cartCount, onCartClick, 
     </div>
     <div className="flex items-center gap-4">
       {showCart && (
-        <button onClick={onCartClick} className={`relative p-2 ${THEME.textMain} hover:${THEME.accent} transition-colors`}>
+        <button onClick={onCartClick} aria-label="Carrito" className={`relative p-2 ${THEME.textMain} hover:${THEME.accent} transition-colors`}>
           <ShoppingCart size={28} />
           {cartCount > 0 && <span className={`absolute -top-1 -right-1 w-4 h-4 ${THEME.primary} text-white text-[10px] font-bold flex items-center justify-center rounded-full shadow-sm`}>{cartCount}</span>}
         </button>
@@ -261,16 +318,16 @@ const Header = ({ onBack, title, onLogoClick, showCart, cartCount, onCartClick, 
       </div>
     </div>
   </header>
-);
+));
 
-const IconRenderer = ({ name, size = 24, className }) => {
+const IconRenderer = React.memo(({ name, size = 24, className }) => {
   const icons = { Table, DoorOpen, Armchair, RectangleVertical, Box, Monitor, Utensils, Archive, Bed, Tv };
   const IconComponent = icons[name] || Box;
   if (!IconComponent) return null;
   return <IconComponent size={size} className={className} />;
-};
+});
 
-const InputMedida = ({ label, val, onChange }) => (
+const InputMedida = React.memo(({ label, val, onChange }) => (
   <div className="flex flex-col items-center group w-full">
     <label className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${THEME.textMuted}`}>{label}</label>
     <input
@@ -278,7 +335,7 @@ const InputMedida = ({ label, val, onChange }) => (
       className={`w-full ${THEME.input} text-center text-lg md:text-xl font-medium py-4 rounded-xl shadow-sm hover:border-[#5D4037] hover:shadow-md transition-all duration-300`}
     />
   </div>
-);
+));
 
 const getMaterialVisual = (config, maderas, melaminas) => {
   if (config.tipoConstruccion === 'chapa_inyectada') {
@@ -368,7 +425,18 @@ const App = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const getHeaderTitle = () => {
+  // --- PRELOADER (OPTIMIZACIÓN) ---
+  useEffect(() => {
+    const preloadImages = () => {
+      maderas.forEach((madera) => {
+        const img = new Image();
+        img.src = getDirectDriveUrl(madera.src);
+      });
+    };
+    if (maderas.length > 0) preloadImages();
+  }, [maderas]);
+
+  const getHeaderTitle = useCallback(() => {
     if (paso === 5) return "Galería";
     if (paso === 4) return "Tu Pedido";
     if (paso === 6) return "Nosotros";
@@ -377,7 +445,7 @@ const App = () => {
     if (paso === 2 && catSeleccionada) return catSeleccionada.label;
     if (paso === 1) return "Categorías";
     return "EBE MUEBLES";
-  };
+  }, [paso, muebleSeleccionado, catSeleccionada]);
 
   const melaminasGrouped = useMemo(() => {
     const grouped = {};
@@ -473,16 +541,16 @@ const App = () => {
   }, [user, isAdmin]);
 
   // --- ADMIN ACTIONS ---
-  const handleAdminLogin = async () => {
+  const handleAdminLogin = useCallback(async () => {
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
       if (ADMIN_EMAILS.includes(result.user.email)) setIsAdmin(true);
       else { alert("No tienes permisos de administrador."); await signOut(auth); await signInAnonymously(auth); }
     } catch (e) { alert("Error Auth: " + e.message); }
-  };
+  }, []);
 
-  const handleSaveSettings = async () => {
+  const handleSaveSettings = useCallback(async () => {
     if (!isAdmin) return;
     try {
       await setDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'settings', 'general'), {
@@ -492,9 +560,9 @@ const App = () => {
       }, { merge: true });
       alert("Configuración guardada correctamente.");
     } catch (e) { alert("Error al guardar: " + e.message); }
-  };
+  }, [isAdmin, adminLogoInput, adminInstagramInput, adminAboutUsImageInput]);
 
-  const addGalleryImage = async () => {
+  const addGalleryImage = useCallback(async () => {
     if (newImage.url && isAdmin) {
       try {
         await addDoc(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'gallery'), {
@@ -503,9 +571,9 @@ const App = () => {
         setNewImage({ url: '', alt: '' });
       } catch (e) { alert("Error: " + e.message); }
     }
-  };
+  }, [isAdmin, newImage]);
 
-  const removeGalleryImage = async (id) => { if (isAdmin && typeof id === 'string') await deleteDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'gallery', id)); };
+  const removeGalleryImage = useCallback(async (id) => { if (isAdmin && typeof id === 'string') await deleteDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'gallery', id)); }, [isAdmin]);
 
   // --- MATERIALS ADMIN ---
   const startEditMaterial = (m) => {
@@ -526,11 +594,11 @@ const App = () => {
     setCostos(prev => ({ ...prev, [key]: num }));
   };
 
-  const saveCostos = async () => {
+  const saveCostos = useCallback(async () => {
     if (!isAdmin) return;
     await setDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'settings', 'costos'), costos);
     alert("Costos actualizados");
-  };
+  }, [isAdmin, costos]);
 
   // --- LÓGICA DE NEGOCIO ---
   useEffect(() => {
@@ -651,7 +719,7 @@ const App = () => {
     }
   }, [config, muebleSeleccionado, paso, costos, maderas, catSeleccionada]);
 
-  const agregarCarrito = () => {
+  const agregarCarrito = useCallback(() => {
     let mName = config.material;
     if (config.tipoConstruccion === 'chapa_inyectada') {
       mName = `Chapa ${config.chapa_color} (${config.chapa_acabado})`;
@@ -665,11 +733,11 @@ const App = () => {
         mName = matConfig ? matConfig.nombre : config.material.charAt(0).toUpperCase() + config.material.slice(1);
       }
     }
-    setCarrito([...carrito, { id: Date.now(), mueble: muebleSeleccionado, config: { ...config, materialNombre: mName }, precio: precioItemActual }]);
+    setCarrito(prev => [...prev, { id: Date.now(), mueble: muebleSeleccionado, config: { ...config, materialNombre: mName }, precio: precioItemActual }]);
     setPaso(1); setCatSeleccionada(null);
-  };
+  }, [config, muebleSeleccionado, melaminas, maderas, precioItemActual]);
 
-  const enviarWhatsapp = async () => {
+  const enviarWhatsapp = useCallback(async () => {
     const total = carrito.reduce((a, b) => a + b.precio, 0);
 
     // Obtener el siguiente ID secuencial persistente
@@ -719,7 +787,7 @@ const App = () => {
     if (cliente.nombreArchivo) text += `\n📎 Archivo adjunto (Plano/Foto): ${cliente.nombreArchivo}`;
 
     window.open(`https://wa.me/${DATOS_CONTACTO.telefono_whatsapp}?text=${encodeURIComponent(text)}`, '_blank');
-  };
+  }, [carrito, cliente]);
 
   const generarPresupuestoPDF = (orderIdParam = null) => {
     const total = carrito.reduce((a, b) => a + b.precio, 0);
@@ -838,9 +906,9 @@ const App = () => {
     setTimeout(() => { printWindow.print(); }, 800);
   };
 
-  const handleAi = async (e) => { e.preventDefault(); setAiLoading(true); setTimeout(() => { setAiResponse("Para este estilo, te recomiendo combinar Petiribí con terminación natural."); setAiLoading(false); }, 1500); };
-  const nextImage = (e) => { e && e.stopPropagation(); setSelectedImage(galeria[(galeria.findIndex(i => i.id === selectedImage.id) + 1) % galeria.length]); };
-  const prevImage = (e) => { e && e.stopPropagation(); setSelectedImage(galeria[(galeria.findIndex(i => i.id === selectedImage.id) - 1 + galeria.length) % galeria.length]); };
+  const handleAi = useCallback(async (e) => { e.preventDefault(); setAiLoading(true); setTimeout(() => { setAiResponse("Para este estilo, te recomiendo combinar Petiribí con terminación natural."); setAiLoading(false); }, 1500); }, []);
+  const nextImage = useCallback((e) => { e && e.stopPropagation(); setSelectedImage(prev => galeria[(galeria.findIndex(i => i.id === prev.id) + 1) % galeria.length]); }, [galeria]);
+  const prevImage = useCallback((e) => { e && e.stopPropagation(); setSelectedImage(prev => galeria[(galeria.findIndex(i => i.id === prev.id) - 1 + galeria.length) % galeria.length]); }, [galeria]);
 
   // --- RENDER ---
   if (isAdmin) return (
@@ -925,7 +993,7 @@ const App = () => {
                         <div className="h-24 bg-gray-100 rounded mb-3 overflow-hidden"><img src={getDirectDriveUrl(m.src)} className="w-full h-full object-cover" /></div>
                         <h4 className="font-bold text-[#333]">{m.nombre}</h4>
                         <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full uppercase font-bold text-[10px]">{m.tier}</span>
-                        <button onClick={() => startEditMaterial(m)} className="absolute top-2 right-2 p-1.5 bg-white border rounded-full text-gray-500 hover:text-[#8B5E3C] hover:border-[#8B5E3C]"><Edit size={14} /></button>
+                        <button onClick={() => startEditMaterial(m)} aria-label="Editar material" className="absolute top-2 right-2 p-1.5 bg-white border rounded-full text-gray-500 hover:text-[#8B5E3C] hover:border-[#8B5E3C]"><Edit size={14} /></button>
                       </>
                     )}
                   </div>
@@ -994,7 +1062,7 @@ const App = () => {
             <div className="grid grid-cols-4 gap-4">
               {galeria.map(img => (
                 <div key={img.id} className="relative group aspect-square rounded-xl overflow-hidden border border-[#E0D8C3]">
-                  <img src={getDirectDriveUrl(img.src)} className="w-full h-full object-cover" />
+                  <img src={getDirectDriveUrl(img.src)} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                   <button onClick={() => removeGalleryImage(img.id)} className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16} /></button>
                 </div>
               ))}
@@ -1096,7 +1164,7 @@ const App = () => {
 
       {/* Botón Carrito FLOTANTE */}
       {paso > 0 && paso !== 4 && carrito.length > 0 && (
-        <button onClick={() => setPaso(4)} className={`fixed bottom-24 right-6 ${THEME.primary} text-white p-3 md:p-4 rounded-full shadow-xl hover:scale-110 transition-all z-50 flex items-center justify-center border-2 border-white`}>
+        <button onClick={() => setPaso(4)} aria-label="Ver Carrito" className={`fixed bottom-24 right-6 ${THEME.primary} text-white p-3 md:p-4 rounded-full shadow-xl hover:scale-110 transition-all z-50 flex items-center justify-center border-2 border-white`}>
           <ShoppingCart size={24} />
           <span className="absolute -top-2 -right-2 bg-[#7A8D6F] text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border border-white">{carrito.length}</span>
         </button>
@@ -1108,7 +1176,7 @@ const App = () => {
           <div className="bg-white w-full max-w-md rounded-2xl border border-[#E0D8C3] shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-4 border-b border-[#F2E9D8] flex justify-between items-center bg-[#FDFBF7]">
               <div className="flex items-center gap-2"><Sparkles size={18} className={THEME.accent} /> <span className={`font-bold ${THEME.textMain} uppercase text-sm`}>Asistente de Diseño</span></div>
-              <button onClick={() => setShowAi(false)}><X size={18} className={THEME.textMuted} /></button>
+              <button onClick={() => setShowAi(false)} aria-label="Cerrar asistente"><X size={18} className={THEME.textMuted} /></button>
             </div>
             <div className="p-4 h-64 overflow-y-auto bg-[#FDFBF7] space-y-3">
               <div className="bg-white border border-[#E0D8C3] p-3 rounded-xl rounded-tl-none text-sm text-[#333] shadow-sm">Hola, soy tu experto en diseño. ¿Buscas maderas cálidas o algo industrial?</div>
@@ -1117,7 +1185,7 @@ const App = () => {
             </div>
             <form onSubmit={handleAi} className="p-3 bg-white flex gap-2 border-t border-[#F2E9D8]">
               <input value={aiQuery} onChange={e => setAiQuery(e.target.value)} placeholder="Escribe tu consulta..." className={`flex-1 bg-[#FAFAFA] border border-[#E0D8C3] rounded-xl px-4 text-sm text-[#333] focus:border-[#5D4037] outline-none`} />
-              <button type="submit" className={`${THEME.primary} text-white p-3 rounded-xl font-bold`}><Send size={18} /></button>
+              <button type="submit" aria-label="Enviar" className={`${THEME.primary} text-white p-3 rounded-xl font-bold`}><Send size={18} /></button>
             </form>
           </div>
         </div>
@@ -1127,7 +1195,7 @@ const App = () => {
       {showReviews && (
         <div className="fixed inset-0 z-50 bg-[#333]/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowReviews(false)}>
           <div className="bg-white w-full max-w-lg rounded-3xl border border-[#E0D8C3] shadow-2xl overflow-hidden p-6 relative" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setShowReviews(false)} className="absolute top-4 right-4 text-[#999] hover:text-[#333]"><X size={24} /></button>
+            <button onClick={() => setShowReviews(false)} aria-label="Cerrar reseñas" className="absolute top-4 right-4 text-[#999] hover:text-[#333]"><X size={24} /></button>
             <h3 className={`text-xl font-bold ${THEME.accent} mb-6 text-center uppercase tracking-widest font-sans`}>Reseñas de Clientes</h3>
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
               {testimonios.map(t => (
@@ -1315,20 +1383,20 @@ const App = () => {
                 <div className={`flex items-center gap-3 mb-4 ${THEME.accent}`}><TreePine size={18} /> <h3 className="text-xs font-bold uppercase tracking-widest font-sans">Materialidad</h3></div>
                 {isMDF ? (
                   <div className="grid grid-cols-1 gap-3">
-                    <button onClick={() => setConfig({ ...config, material: 'm_blanco' })} className={`p-4 rounded-xl border flex items-center justify-between transition-all ${config.material === 'm_blanco' ? `${THEME.primary} text-white border-transparent shadow-md` : 'border-[#E0D8C3] bg-transparent text-[#666]'}`}><span className="font-bold text-sm">Blanco Clásico</span> <div className="w-6 h-6 rounded-full bg-white border border-[#E0D8C3]"></div></button>
-                    <button onClick={() => { setModalType('all'); setShowMaterialModal(true) }} className={`p-4 rounded-xl border transition-all flex items-center justify-between ${config.material.startsWith('m_') && config.material !== 'm_blanco' ? `${THEME.accentBorder} bg-[#F9F7F2] ring-1 ring-[#8B5E3C]` : 'border-[#E0D8C3] bg-transparent hover:bg-[#F9F7F2]'}`}>
-                      <div className="flex items-center gap-3">
-                        <Grid size={20} className={THEME.textMuted} />
-                        <span className={`font-bold text-xs md:text-sm ${THEME.textMain}`}>
-                          {config.material.startsWith('m_') && config.material !== 'm_blanco'
-                            ? `Seleccionado: ${melaminas.find(m => m.id === config.material)?.nombre || 'Diseño'}`
-                            : 'Seleccionar Diseño (Colores/Texturas)'}
+                    <button onClick={() => { setModalType('all'); setShowMaterialModal(true) }} className={`w-full py-4 rounded-xl border bg-white hover:bg-[#F9F7F2] transition-all flex items-center justify-between px-6 ${config.material.startsWith('m_') ? `${THEME.accentBorder} ring-2 ring-[#5D4037] ring-offset-1` : 'border-[#E0D8C3]'}`}>
+                      <div className="flex items-center gap-4">
+                        <Grid size={24} className={THEME.textMuted} />
+                        <span className={`font-bold text-sm uppercase tracking-wide ${THEME.textMain}`}>
+                          {config.material.startsWith('m_')
+                            ? `SELECCIONADO: ${melaminas.find(m => m.id === config.material)?.nombre || 'DISEÑO'}`
+                            : 'SELECCIONAR COLOR / TEXTURA'}
                         </span>
                       </div>
-                      {config.material.startsWith('m_') && config.material !== 'm_blanco' && (
-                        <div className="w-8 h-8 rounded-lg border border-[#E0D8C3] shadow-sm" style={{ background: melaminas.find(m => m.id === config.material)?.css }}></div>
+                      {config.material.startsWith('m_') ? (
+                        <div className="w-10 h-10 rounded-lg border border-[#E0D8C3] shadow-sm" style={{ background: melaminas.find(m => m.id === config.material)?.css }}></div>
+                      ) : (
+                        <ChevronRight size={20} className={THEME.textMuted} />
                       )}
-                      {!config.material.startsWith('m_') || config.material === 'm_blanco' && <ChevronRight size={16} className={THEME.textMuted} />}
                     </button>
                   </div>
                 ) : (
@@ -1570,7 +1638,7 @@ const App = () => {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-16">
               {galeria.map(img => (
                 <div key={img.id} onClick={() => setSelectedImage(img)} className="aspect-square rounded-2xl overflow-hidden cursor-pointer group relative shadow-sm hover:shadow-md transition-all border border-[#E0D8C3]">
-                  <img src={getDirectDriveUrl(img.src)} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" />
+                  <img src={getDirectDriveUrl(img.src)} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
                   <div className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-100 transition-opacity">
                     <span className="text-white text-sm md:text-lg font-bold uppercase tracking-widest mb-4 px-2 text-center drop-shadow-md font-sans">{img.alt}</span>
                   </div>
@@ -1585,7 +1653,7 @@ const App = () => {
           <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 animate-fade-in text-center max-w-4xl mx-auto">
             <div className={`w-32 h-32 rounded-full bg-white border border-[#E0D8C3] flex items-center justify-center mb-8 shadow-sm overflow-hidden p-2`}>
               {aboutUsImageUrl ? (
-                <img src={getDirectDriveUrl(aboutUsImageUrl)} className="w-full h-full object-cover rounded-full" alt="Nosotros" />
+                <img src={getDirectDriveUrl(aboutUsImageUrl)} className="w-full h-full object-cover rounded-full" alt="Nosotros" loading="lazy" decoding="async" />
               ) : (
                 <Users size={56} className={THEME.accent} />
               )}
