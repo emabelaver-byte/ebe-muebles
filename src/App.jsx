@@ -18,10 +18,9 @@ import {
 //  1. CONFIGURACIÓN Y DATOS
 // ==============================================================================
 
-// GEMINI API CONFIG - ¡IMPORTANTE!
-// Para que el asistente funcione en la web, debes pegar tu API KEY de Google aquí abajo.
-// Consíguela en: https://aistudio.google.com/app/apikey
-const apiKey = ""AIzaSyABrPRcFOGlwh1oX8BhTIjlfaJDpFuKFjw"";
+// GEMINI API CONFIG
+// Clave extraída de tu imagen para conectar el asistente
+const apiKey = "AlzaSyABrPRcFOGlwh1oX8BhTljlfaJDpFuKFjw";
 
 const userFirebaseConfig = {
   apiKey: "AIzaSyCObM7lu1VN6kvPx9Ifgd4eo4N3bgm-Oak",
@@ -34,7 +33,7 @@ const userFirebaseConfig = {
 };
 
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userFirebaseConfig;
-const APP_ID_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'ebe-muebles-prod-v6';
+const APP_ID_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'ebe-muebles-prod-v7';
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -68,7 +67,7 @@ const THEME = {
   input: "bg-white border border-[#D6C4B0] focus:border-[#5D4037] outline-none transition-all font-sans text-[#2C241F] placeholder-[#999]"
 };
 
-// --- DATOS ESTÁTICOS (Optimizados) ---
+// --- DATOS ESTÁTICOS ---
 const DEFAULT_LOGO_SRC = "https://cdn-icons-png.flaticon.com/512/3030/3030336.png";
 const DEFAULT_INSTAGRAM_URL = "https://www.instagram.com/_u/ebe.muebles/";
 const ADMIN_EMAILS = ['emabelaver@gmail.com', 'acevedo.gestoriadelautomotor@gmail.com'];
@@ -130,9 +129,7 @@ const DEFAULT_MADERAS = [
   { id: 'petiribi', nombre: 'Petiribí', tier: 'premium', src: "https://i.postimg.cc/SQ8zqgxf/Petiribi-textura.png" },
 ];
 
-// Melaminas con colores aproximados a las imágenes proporcionadas
 const DEFAULT_MELAMINAS_DB = [
-  // Línea Lisos
   { id: 'm_ceniza', nombre: 'Ceniza', css: '#BDBDBD', category: 'lisos' },
   { id: 'm_grafito', nombre: 'Grafito', css: '#37474F', category: 'lisos' },
   { id: 'm_negro_profundo', nombre: 'Negro Profundo', css: '#101010', category: 'lisos' },
@@ -142,7 +139,6 @@ const DEFAULT_MELAMINAS_DB = [
   { id: 'm_litio', nombre: 'Litio', css: '#8D867D', category: 'lisos' },
   { id: 'm_blanco', nombre: 'Blanco', css: '#FFFFFF', category: 'lisos' },
   { id: 'm_blanco_tundra', nombre: 'Blanco Tundra', css: '#F0F0F0', category: 'lisos' },
-  // Línea Nature
   { id: 'm_caju', nombre: 'Cajú', css: 'linear-gradient(90deg, #B8A47E, #A6936E)', category: 'nature' },
   { id: 'm_gaudi', nombre: 'Gaudí', css: 'linear-gradient(90deg, #5D4B3F, #4A3A30)', category: 'nature' },
   { id: 'm_mont_blanc', nombre: 'Mont Blanc', css: 'linear-gradient(90deg, #D4CFC9, #C4BFB9)', category: 'nature' },
@@ -152,7 +148,6 @@ const DEFAULT_MELAMINAS_DB = [
   { id: 'm_carvalho_mezzo', nombre: 'Carvalho Mezzo', css: 'linear-gradient(90deg, #7A6553, #6A5543)', category: 'nature' },
   { id: 'm_nocce_milano', nombre: 'Nocce Milano', css: 'linear-gradient(90deg, #5C4033, #4C3023)', category: 'nature' },
   { id: 'm_blanco_nature', nombre: 'Blanco Nature', css: 'linear-gradient(90deg, #F5F5F5, #E5E5E5)', category: 'nature' },
-  // Línea Mesopotamia
   { id: 'm_petiribi_meso', nombre: 'Petiribí', css: 'linear-gradient(90deg, #8A6F45, #7A5F35)', category: 'mesopotamia' },
   { id: 'm_yute', nombre: 'Yute', css: 'repeating-linear-gradient(45deg, #948C78, #948C78 2px, #847C68 2px, #847C68 4px)', category: 'mesopotamia' },
   { id: 'm_terracota', nombre: 'Terracota', css: '#6E4D3A', category: 'mesopotamia' },
@@ -163,14 +158,12 @@ const DEFAULT_MELAMINAS_DB = [
   { id: 'm_jade', nombre: 'Jade', css: '#7A8B7D', category: 'mesopotamia' },
   { id: 'm_kiri_meso', nombre: 'Kiri', css: 'linear-gradient(90deg, #DCCBB2, #CCCBA2)', category: 'mesopotamia' },
   { id: 'm_paraiso_meso', nombre: 'Paraíso', css: 'linear-gradient(90deg, #C29F76, #B28F66)', category: 'mesopotamia' },
-  // Línea Étnica
   { id: 'm_tribal', nombre: 'Tribal', css: '#6D605B', category: 'etnica' },
   { id: 'm_sahara', nombre: 'Sahara', css: '#A3927F', category: 'etnica' },
   { id: 'm_tuareg', nombre: 'Tuareg', css: '#1A242E', category: 'etnica' },
   { id: 'm_himalaya', nombre: 'Himalaya', css: '#B09A8B', category: 'etnica' },
   { id: 'm_safari', nombre: 'Safari', css: '#4B533E', category: 'etnica' },
   { id: 'm_everest', nombre: 'Everest', css: '#D1D5D2', category: 'etnica' },
-  // Línea Hilados
   { id: 'm_seda_giorno', nombre: 'Seda Giorno', css: 'repeating-linear-gradient(45deg, #B0AB9F, #B0AB9F 2px, #A09B8F 2px, #A09B8F 4px)', category: 'hilados' },
   { id: 'm_seda_notte', nombre: 'Seda Notte', css: 'repeating-linear-gradient(45deg, #7A726A, #7A726A 2px, #6A625A 2px, #6A625A 4px)', category: 'hilados' },
   { id: 'm_seda_azzurra', nombre: 'Seda Azzurra', css: 'repeating-linear-gradient(45deg, #1B2E45, #1B2E45 2px, #0B1E35 2px, #0B1E35 4px)', category: 'hilados' },
@@ -178,7 +171,6 @@ const DEFAULT_MELAMINAS_DB = [
   { id: 'm_lino_blanco', nombre: 'Lino Blanco', css: 'repeating-linear-gradient(45deg, #EAEAEA, #EAEAEA 2px, #DADADA 2px, #DADADA 4px)', category: 'hilados' },
   { id: 'm_lino_terra', nombre: 'Lino Terra', css: 'repeating-linear-gradient(45deg, #5E544A, #5E544A 2px, #4E443A 2px, #4E443A 4px)', category: 'hilados' },
   { id: 'm_lino_negro', nombre: 'Lino Negro', css: 'repeating-linear-gradient(45deg, #1C1C1C, #1C1C1C 2px, #0C0C0C 2px, #0C0C0C 4px)', category: 'hilados' },
-  // Línea Urban Concept
   { id: 'm_coliseo', nombre: 'Coliseo', css: 'linear-gradient(135deg, #6E665F, #5E564F)', category: 'urban' },
   { id: 'm_amberes', nombre: 'Amberes', css: 'linear-gradient(135deg, #2C2E33, #1C1E23)', category: 'urban' },
   { id: 'm_viena', nombre: 'Viena', css: 'linear-gradient(135deg, #9E9E93, #8E8E83)', category: 'urban' },
@@ -186,7 +178,6 @@ const DEFAULT_MELAMINAS_DB = [
   { id: 'm_praga', nombre: 'Praga', css: 'linear-gradient(90deg, #9C8C7C, #8C7C6C)', category: 'urban' },
   { id: 'm_street', nombre: 'Street', css: 'linear-gradient(135deg, #8C837B, #7C736B)', category: 'urban' },
   { id: 'm_home', nombre: 'Home', css: 'linear-gradient(135deg, #A8A49E, #98948E)', category: 'urban' },
-  // Línea Nórdica
   { id: 'm_helsinki', nombre: 'Helsinki', css: 'linear-gradient(90deg, #D7CFC4, #C9BEB0)', category: 'nordica' },
   { id: 'm_baltico', nombre: 'Báltico', css: 'linear-gradient(90deg, #8C8479, #756D63)', category: 'nordica' },
   { id: 'm_olmo_finlandes', nombre: 'Olmo Finlandés', css: 'linear-gradient(90deg, #C19A6B, #A67C52)', category: 'nordica' },
@@ -450,6 +441,20 @@ const App = () => {
     document.body.appendChild(script);
   }, []);
 
+  // --- SEO PARA ARGENTINA ---
+  useEffect(() => {
+    document.title = "eBe Muebles | Carpintería de Autor en Alta Gracia, Córdoba";
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute("content", "eBe Muebles: Diseño y fabricación de muebles a medida en Alta Gracia, Córdoba. Mesas, sillas, vestidores y muebles industriales. Envíos a todo el país.");
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = "description";
+      meta.content = "eBe Muebles: Diseño y fabricación de muebles a medida en Alta Gracia, Córdoba. Mesas, sillas, vestidores y muebles industriales. Envíos a todo el país.";
+      document.head.appendChild(meta);
+    }
+  }, []);
+
   const getHeaderTitle = useCallback(() => {
     if (paso === 5) return "Galería";
     if (paso === 4) return "Tu Pedido";
@@ -613,7 +618,7 @@ const App = () => {
 
   const uploadDefaultMaterials = async () => {
     if (!isAdmin) return;
-    if (!confirm("Esto cargará todas las maderas por defecto a la base de datos. ¿Deseas continuar?")) return;
+    if (!confirm("Esto cargará todas las maderas por defecto a la base de datos de la web. ¿Deseas continuar?")) return;
 
     try {
       const batch = writeBatch(db);
@@ -622,7 +627,7 @@ const App = () => {
         batch.set(ref, { ...m, createdAt: serverTimestamp() });
       });
       await batch.commit();
-      alert("¡Maderas cargadas exitosamente!");
+      alert("¡Maderas cargadas exitosamente! Ahora se verán en la web.");
     } catch (e) {
       console.error("Error cargando defaults:", e);
       alert("Hubo un error al cargar las maderas.");
@@ -672,7 +677,7 @@ const App = () => {
   const saveCostos = useCallback(async () => {
     if (!isAdmin) return;
     await setDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'settings', 'costos'), costos);
-    alert("Costos actualizados");
+    alert("Costos actualizados y guardados en la nube.");
   }, [isAdmin, costos]);
 
   // --- LÓGICA DE NEGOCIO ---
@@ -872,7 +877,6 @@ const App = () => {
     // Creamos el HTML del PDF oculto
     const total = carrito.reduce((a, b) => a + b.precio, 0);
     const fecha = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const idPresupuesto = 1980; // Placeholder ID for simple download
 
     const itemsHtml = carrito.map(item => {
       let acabadoLabel = '';
@@ -928,6 +932,47 @@ const App = () => {
     // Ejecutar descarga
     window.html2pdf().set(opt).from(element).save();
   };
+
+  const enviarWhatsapp = useCallback(async () => {
+    const total = carrito.reduce((a, b) => a + b.precio, 0);
+    let nextOrderNumber = 1980;
+    try {
+      const q = query(
+        collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'orders'),
+        orderBy('orderNumber', 'desc'),
+        limit(1)
+      );
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const lastData = querySnapshot.docs[0].data();
+        if (typeof lastData.orderNumber === 'number') {
+          nextOrderNumber = lastData.orderNumber + 1;
+        }
+      }
+    } catch (e) { console.error("Error obteniendo número", e); }
+
+    // Guardar pedido
+    try {
+      await addDoc(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'orders'), {
+        orderNumber: nextOrderNumber,
+        cliente,
+        items: carrito,
+        total,
+        createdAt: Date.now()
+      });
+    } catch (e) { }
+
+    // Mensaje WhatsApp
+    let text = `👋 Hola *eBe Muebles*, soy ${cliente.nombre}.\n📍 Desde: ${cliente.lugar}\n📋 *PEDIDO WEB #${nextOrderNumber}*\n\n`;
+    carrito.forEach(i => text += `🔹 *${i.mueble.nombre}* \n`);
+    text += `\n💰 *Total: $${new Intl.NumberFormat('es-AR').format(total)}*`;
+    text += `\n\n(He descargado el PDF del presupuesto)`;
+
+    window.open(`https://wa.me/${DATOS_CONTACTO.telefono_whatsapp}?text=${encodeURIComponent(text)}`, '_blank');
+
+    // Descarga automática del PDF
+    downloadPDF();
+  }, [carrito, cliente, pdfLibLoaded]);
 
   const nextImage = useCallback((e) => { e && e.stopPropagation(); setSelectedImage(prev => galeria[(galeria.findIndex(i => i.id === prev.id) + 1) % galeria.length]); }, [galeria]);
   const prevImage = useCallback((e) => { e && e.stopPropagation(); setSelectedImage(prev => galeria[(galeria.findIndex(i => i.id === prev.id) - 1 + galeria.length) % galeria.length]); }, [galeria]);
