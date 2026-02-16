@@ -11,12 +11,15 @@ import {
   RectangleVertical, Box, LogOut, Save, Coins, ImagePlus, Lock, MapPin,
   User, Paperclip, X, Check, Table, DoorOpen, ArrowLeft, Truck, Store, Map, Users,
   Square, Triangle, Star, FileText, MessageCircle, Instagram, Upload,
-  BarChart3, PieChart, Smartphone, Globe, Grid, RefreshCw, Phone, Mail, Navigation, Info, Edit, Link as LinkIcon, Eye
+  BarChart3, PieChart, Smartphone, Globe, Grid, RefreshCw, Phone, Mail, Navigation, Info, Edit, Link as LinkIcon, Eye, Bot
 } from 'lucide-react';
 
 // ==============================================================================
 //  1. CONFIGURACIÓN Y DATOS
 // ==============================================================================
+
+// GEMINI API CONFIG
+const apiKey = ""; // La clave se inyectará en tiempo de ejecución o debe configurarse en el entorno
 
 const userFirebaseConfig = {
   apiKey: "AIzaSyCObM7lu1VN6kvPx9Ifgd4eo4N3bgm-Oak",
@@ -35,7 +38,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Helper para URLs de Drive y otros
+// --- UTILIDADES ---
 const getDirectDriveUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('data:image')) return url;
@@ -45,6 +48,7 @@ const getDirectDriveUrl = (url) => {
   return url;
 };
 
+// --- TEMA ---
 const THEME = {
   bg: "bg-[#E8DCCA]",
   card: "bg-white border border-[#D6C4B0] shadow-sm",
@@ -62,6 +66,7 @@ const THEME = {
   input: "bg-white border border-[#D6C4B0] focus:border-[#5D4037] outline-none transition-all font-sans text-[#2C241F] placeholder-[#999]"
 };
 
+// --- DATOS ESTÁTICOS (Optimizados fuera del componente) ---
 const DEFAULT_LOGO_SRC = "https://cdn-icons-png.flaticon.com/512/3030/3030336.png";
 const DEFAULT_INSTAGRAM_URL = "https://www.instagram.com/_u/ebe.muebles/";
 const ADMIN_EMAILS = ['emabelaver@gmail.com', 'acevedo.gestoriadelautomotor@gmail.com'];
@@ -73,7 +78,6 @@ const DATOS_CONTACTO = {
   ubicacion_texto: "Alta Gracia, Córdoba"
 };
 
-// --- DEFAULTS ---
 const DEFAULT_COSTOS = {
   madera_basica: 8500, madera_intermedia: 9700, madera_premium: 11000,
   madera_p_ext_basica: 13500, madera_p_ext_intermedia: 14500, madera_p_ext_premium: 16000,
@@ -124,6 +128,7 @@ const DEFAULT_MADERAS = [
   { id: 'petiribi', nombre: 'Petiribí', tier: 'premium', src: "https://i.postimg.cc/SQ8zqgxf/Petiribi-textura.png" },
 ];
 
+// Melaminas con colores aproximados a las imágenes proporcionadas
 const DEFAULT_MELAMINAS_DB = [
   // Línea Lisos
   { id: 'm_ceniza', nombre: 'Ceniza', css: '#BDBDBD', category: 'lisos' },
@@ -135,7 +140,6 @@ const DEFAULT_MELAMINAS_DB = [
   { id: 'm_litio', nombre: 'Litio', css: '#8D867D', category: 'lisos' },
   { id: 'm_blanco', nombre: 'Blanco', css: '#FFFFFF', category: 'lisos' },
   { id: 'm_blanco_tundra', nombre: 'Blanco Tundra', css: '#F0F0F0', category: 'lisos' },
-
   // Línea Nature
   { id: 'm_caju', nombre: 'Cajú', css: 'linear-gradient(90deg, #B8A47E, #A6936E)', category: 'nature' },
   { id: 'm_gaudi', nombre: 'Gaudí', css: 'linear-gradient(90deg, #5D4B3F, #4A3A30)', category: 'nature' },
@@ -146,7 +150,6 @@ const DEFAULT_MELAMINAS_DB = [
   { id: 'm_carvalho_mezzo', nombre: 'Carvalho Mezzo', css: 'linear-gradient(90deg, #7A6553, #6A5543)', category: 'nature' },
   { id: 'm_nocce_milano', nombre: 'Nocce Milano', css: 'linear-gradient(90deg, #5C4033, #4C3023)', category: 'nature' },
   { id: 'm_blanco_nature', nombre: 'Blanco Nature', css: 'linear-gradient(90deg, #F5F5F5, #E5E5E5)', category: 'nature' },
-
   // Línea Mesopotamia
   { id: 'm_petiribi_meso', nombre: 'Petiribí', css: 'linear-gradient(90deg, #8A6F45, #7A5F35)', category: 'mesopotamia' },
   { id: 'm_yute', nombre: 'Yute', css: 'repeating-linear-gradient(45deg, #948C78, #948C78 2px, #847C68 2px, #847C68 4px)', category: 'mesopotamia' },
@@ -158,7 +161,6 @@ const DEFAULT_MELAMINAS_DB = [
   { id: 'm_jade', nombre: 'Jade', css: '#7A8B7D', category: 'mesopotamia' },
   { id: 'm_kiri_meso', nombre: 'Kiri', css: 'linear-gradient(90deg, #DCCBB2, #CCCBA2)', category: 'mesopotamia' },
   { id: 'm_paraiso_meso', nombre: 'Paraíso', css: 'linear-gradient(90deg, #C29F76, #B28F66)', category: 'mesopotamia' },
-
   // Línea Étnica
   { id: 'm_tribal', nombre: 'Tribal', css: '#6D605B', category: 'etnica' },
   { id: 'm_sahara', nombre: 'Sahara', css: '#A3927F', category: 'etnica' },
@@ -166,7 +168,6 @@ const DEFAULT_MELAMINAS_DB = [
   { id: 'm_himalaya', nombre: 'Himalaya', css: '#B09A8B', category: 'etnica' },
   { id: 'm_safari', nombre: 'Safari', css: '#4B533E', category: 'etnica' },
   { id: 'm_everest', nombre: 'Everest', css: '#D1D5D2', category: 'etnica' },
-
   // Línea Hilados
   { id: 'm_seda_giorno', nombre: 'Seda Giorno', css: 'repeating-linear-gradient(45deg, #B0AB9F, #B0AB9F 2px, #A09B8F 2px, #A09B8F 4px)', category: 'hilados' },
   { id: 'm_seda_notte', nombre: 'Seda Notte', css: 'repeating-linear-gradient(45deg, #7A726A, #7A726A 2px, #6A625A 2px, #6A625A 4px)', category: 'hilados' },
@@ -175,7 +176,6 @@ const DEFAULT_MELAMINAS_DB = [
   { id: 'm_lino_blanco', nombre: 'Lino Blanco', css: 'repeating-linear-gradient(45deg, #EAEAEA, #EAEAEA 2px, #DADADA 2px, #DADADA 4px)', category: 'hilados' },
   { id: 'm_lino_terra', nombre: 'Lino Terra', css: 'repeating-linear-gradient(45deg, #5E544A, #5E544A 2px, #4E443A 2px, #4E443A 4px)', category: 'hilados' },
   { id: 'm_lino_negro', nombre: 'Lino Negro', css: 'repeating-linear-gradient(45deg, #1C1C1C, #1C1C1C 2px, #0C0C0C 2px, #0C0C0C 4px)', category: 'hilados' },
-
   // Línea Urban Concept
   { id: 'm_coliseo', nombre: 'Coliseo', css: 'linear-gradient(135deg, #6E665F, #5E564F)', category: 'urban' },
   { id: 'm_amberes', nombre: 'Amberes', css: 'linear-gradient(135deg, #2C2E33, #1C1E23)', category: 'urban' },
@@ -184,7 +184,6 @@ const DEFAULT_MELAMINAS_DB = [
   { id: 'm_praga', nombre: 'Praga', css: 'linear-gradient(90deg, #9C8C7C, #8C7C6C)', category: 'urban' },
   { id: 'm_street', nombre: 'Street', css: 'linear-gradient(135deg, #8C837B, #7C736B)', category: 'urban' },
   { id: 'm_home', nombre: 'Home', css: 'linear-gradient(135deg, #A8A49E, #98948E)', category: 'urban' },
-
   // Línea Nórdica
   { id: 'm_helsinki', nombre: 'Helsinki', css: 'linear-gradient(90deg, #D7CFC4, #C9BEB0)', category: 'nordica' },
   { id: 'm_baltico', nombre: 'Báltico', css: 'linear-gradient(90deg, #8C8479, #756D63)', category: 'nordica' },
@@ -281,6 +280,9 @@ const GlobalStyles = () => (
     ::-webkit-scrollbar-track { background: #E8DCCA; }
     ::-webkit-scrollbar-thumb { background: #8B5E3C; border-radius: 2px; }
     ::-webkit-scrollbar-thumb:hover { background: #5D4037; }
+    
+    /* Animación de carga para el asistente */
+    .gemini-gradient { background: linear-gradient(135deg, #1E3A8A 0%, #7C3AED 50%, #DB2777 100%); }
   `}</style>
 );
 
@@ -472,7 +474,6 @@ const App = () => {
   useEffect(() => {
     if (!user) return;
     const trackVisit = async () => {
-      const visitKey = `visit_${new Date().toISOString().split('T')[0]}_${user.uid}`;
       const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       try {
         // Simply increment a counter in firestore
@@ -587,6 +588,41 @@ const App = () => {
       await setDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'materials', editMaterialId), editMaterialData, { merge: true });
       setEditMaterialId(null);
     } catch (e) { console.error(e); alert("Error al guardar material"); }
+  };
+
+  const addMelamina = async () => {
+    if (!isAdmin) return;
+    if (!newMelamina.nombre) return alert("Falta nombre");
+    try {
+      await addDoc(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'melamines'), {
+        ...newMelamina,
+        id: `m_${Date.now()}`,
+        createdAt: Date.now()
+      });
+      setNewMelamina({ nombre: '', css: '#ffffff', category: 'lisos', isGradient: false });
+    } catch (e) { console.error(e); }
+  };
+
+  const deleteMelamina = async (id) => { if (isAdmin) await deleteDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'melamines', id)); }
+
+  const uploadDefaultMelamines = async () => {
+    if (!isAdmin) return;
+    if (!confirm("Esto cargará todas las melaminas por defecto a la base de datos. ¿Deseas continuar?")) return;
+
+    try {
+      const batch = writeBatch(db);
+
+      DEFAULT_MELAMINAS_DB.forEach((melamina) => {
+        const ref = doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'melamines', melamina.id);
+        batch.set(ref, { ...melamina, createdAt: serverTimestamp() });
+      });
+
+      await batch.commit();
+      alert("¡Todas las materialidades han sido cargadas exitosamente!");
+    } catch (e) {
+      console.error("Error cargando defaults:", e);
+      alert("Hubo un error al cargar las materialidades.");
+    }
   };
 
   const handleCostoChange = (key, val) => {
@@ -736,6 +772,67 @@ const App = () => {
     setCarrito(prev => [...prev, { id: Date.now(), mueble: muebleSeleccionado, config: { ...config, materialNombre: mName }, precio: precioItemActual }]);
     setPaso(1); setCatSeleccionada(null);
   }, [config, muebleSeleccionado, melaminas, maderas, precioItemActual]);
+
+  const handleAi = useCallback(async (e) => {
+    e.preventDefault();
+    if (!aiQuery.trim()) return;
+
+    setAiLoading(true);
+    setAiResponse('');
+
+    // Preparamos el contexto para el prompt
+    const contextText = `
+      Eres el Asistente Virtual de eBe Muebles, una carpintería de autor en Alta Gracia, Córdoba.
+      Tu tono es profesional, cálido y experto en diseño. Responde SOLO basándote en los siguientes productos y servicios que ofrecemos.
+
+      NUESTROS PRODUCTOS:
+      ${LISTA_MUEBLES_GRAL.map(m => `- ${m.nombre}`).join('\n')}
+      - Mesas a Medida (Maciza, Melamina, Herrería)
+      - Puertas a Medida (Maciza, Chapa Inyectada, Placa)
+
+      MATERIALES MADERA MACIZA:
+      ${maderas.map(m => `- ${m.nombre} (${m.tier})`).join('\n')}
+
+      MATERIALES MELAMINA (Colores y Texturas):
+      ${melaminas.map(m => `- ${m.nombre} (Línea ${m.category})`).join('\n')}
+
+      SERVICIOS:
+      - Fabricación a medida.
+      - Envíos a domicilio y retiro en taller.
+      - Asesoramiento personalizado.
+
+      SI EL USUARIO PREGUNTA POR ALGO QUE NO ESTÁ EN ESTA LISTA, responde amablemente que por el momento no trabajamos ese producto, pero que podemos asesorarlo con nuestros muebles a medida.
+      Intenta que tus respuestas sean breves y orientadas a la venta.
+    `;
+
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [{
+            role: "user",
+            parts: [{ text: contextText + "\n\nUsuario: " + aiQuery }]
+          }]
+        })
+      });
+
+      const data = await response.json();
+      if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+        setAiResponse(data.candidates[0].content.parts[0].text);
+      } else {
+        setAiResponse("Lo siento, hubo un problema al conectar con el asistente. Por favor intenta de nuevo.");
+      }
+    } catch (error) {
+      console.error("Error AI:", error);
+      setAiResponse("Hubo un error de conexión. Verifica tu internet o intenta más tarde.");
+    } finally {
+      setAiLoading(false);
+      setAiQuery(''); // Limpiar input después de enviar
+    }
+  }, [aiQuery, maderas, melaminas]); // Dependencias para que se actualice si cambian los datos
 
   const enviarWhatsapp = useCallback(async () => {
     const total = carrito.reduce((a, b) => a + b.precio, 0);
@@ -906,7 +1003,6 @@ const App = () => {
     setTimeout(() => { printWindow.print(); }, 800);
   };
 
-  const handleAi = useCallback(async (e) => { e.preventDefault(); setAiLoading(true); setTimeout(() => { setAiResponse("Para este estilo, te recomiendo combinar Petiribí con terminación natural."); setAiLoading(false); }, 1500); }, []);
   const nextImage = useCallback((e) => { e && e.stopPropagation(); setSelectedImage(prev => galeria[(galeria.findIndex(i => i.id === prev.id) + 1) % galeria.length]); }, [galeria]);
   const prevImage = useCallback((e) => { e && e.stopPropagation(); setSelectedImage(prev => galeria[(galeria.findIndex(i => i.id === prev.id) - 1 + galeria.length) % galeria.length]); }, [galeria]);
 
@@ -1075,6 +1171,14 @@ const App = () => {
             <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
               <div className="flex justify-between items-center mb-4 border-b pb-2">
                 <h3 className="font-bold uppercase text-sm text-[#8B5E3C]">Gestión de Melaminas</h3>
+                {/* Botón Disquete para Cargar Defaults */}
+                <button
+                  onClick={uploadDefaultMelamines}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors shadow-sm"
+                  title="Cargar catálogo completo de melaminas por defecto a la base de datos"
+                >
+                  <Save size={16} /> Cargar Defaults
+                </button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div className="flex flex-col gap-1">
@@ -1094,7 +1198,7 @@ const App = () => {
                     <div className="w-10 h-10 rounded border" style={{ background: newMelamina.css }}></div>
                   </div>
                 </div>
-                <button onClick={() => { }} className="bg-[#5D4037] text-white p-2 rounded font-bold text-sm h-10 hover:bg-[#3E2723]">AGREGAR</button>
+                <button onClick={addMelamina} className="bg-[#5D4037] text-white p-2 rounded font-bold text-sm h-10 hover:bg-[#3E2723]">AGREGAR</button>
               </div>
             </div>
 
@@ -1108,7 +1212,7 @@ const App = () => {
                       <div className="text-[10px] text-gray-500 uppercase font-semibold">{CATEGORIAS_MELAMINA.find(c => c.id === m.category)?.label}</div>
                     </div>
                   </div>
-                  <button className="text-red-300 hover:text-red-500"><Trash2 size={16} /></button>
+                  <button onClick={() => deleteMelamina(m.id)} className="text-red-300 hover:text-red-500"><Trash2 size={16} /></button>
                 </div>
               ))}
             </div>
@@ -1170,22 +1274,56 @@ const App = () => {
         </button>
       )}
 
-      {/* AI Modal */}
+      {/* AI Modal - Asistente GEMINI */}
       {showAi && (
         <div className="fixed inset-0 z-50 bg-[#333]/20 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" onClick={() => setShowAi(false)}>
           <div className="bg-white w-full max-w-md rounded-2xl border border-[#E0D8C3] shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="p-4 border-b border-[#F2E9D8] flex justify-between items-center bg-[#FDFBF7]">
-              <div className="flex items-center gap-2"><Sparkles size={18} className={THEME.accent} /> <span className={`font-bold ${THEME.textMain} uppercase text-sm`}>Asistente de Diseño</span></div>
-              <button onClick={() => setShowAi(false)} aria-label="Cerrar asistente"><X size={18} className={THEME.textMuted} /></button>
+            <div className="p-4 border-b border-[#F2E9D8] flex justify-between items-center gemini-gradient">
+              <div className="flex items-center gap-2 text-white">
+                <Sparkles size={20} className="text-yellow-200" />
+                <span className={`font-bold uppercase text-sm tracking-wider`}>Asistente Gemini</span>
+              </div>
+              <button onClick={() => setShowAi(false)} aria-label="Cerrar asistente"><X size={18} className="text-white/80 hover:text-white" /></button>
             </div>
-            <div className="p-4 h-64 overflow-y-auto bg-[#FDFBF7] space-y-3">
-              <div className="bg-white border border-[#E0D8C3] p-3 rounded-xl rounded-tl-none text-sm text-[#333] shadow-sm">Hola, soy tu experto en diseño. ¿Buscas maderas cálidas o algo industrial?</div>
-              {aiResponse && <div className="bg-white border border-[#E0D8C3] p-3 rounded-xl rounded-tl-none text-sm text-[#333] shadow-sm animate-fade-in">{aiResponse}</div>}
-              {aiLoading && <div className="text-xs text-[#999] animate-pulse ml-2">Pensando...</div>}
+            <div className="p-4 h-80 overflow-y-auto bg-gray-50 space-y-4">
+              <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white shrink-0">
+                  <Bot size={16} />
+                </div>
+                <div className="bg-white border border-gray-100 p-3 rounded-2xl rounded-tl-none text-sm text-gray-700 shadow-sm leading-relaxed">
+                  ¡Hola! Soy tu asistente de diseño inteligente. Conozco todos los productos de <b>eBe Muebles</b>.
+                  <br /><br />¿Buscas una mesa de madera maciza, un vestidor o quizás alguna textura en melamina específica? ¡Pregúntame!
+                </div>
+              </div>
+
+              {aiResponse && (
+                <div className="flex gap-3 animate-fade-in">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white shrink-0">
+                    <Bot size={16} />
+                  </div>
+                  <div className="bg-white border border-gray-100 p-3 rounded-2xl rounded-tl-none text-sm text-gray-700 shadow-sm leading-relaxed">
+                    {aiResponse}
+                  </div>
+                </div>
+              )}
+
+              {aiLoading && (
+                <div className="flex gap-2 items-center text-xs text-purple-600 font-medium ml-12 animate-pulse">
+                  <Sparkles size={12} /> Pensando...
+                </div>
+              )}
             </div>
-            <form onSubmit={handleAi} className="p-3 bg-white flex gap-2 border-t border-[#F2E9D8]">
-              <input value={aiQuery} onChange={e => setAiQuery(e.target.value)} placeholder="Escribe tu consulta..." className={`flex-1 bg-[#FAFAFA] border border-[#E0D8C3] rounded-xl px-4 text-sm text-[#333] focus:border-[#5D4037] outline-none`} />
-              <button type="submit" aria-label="Enviar" className={`${THEME.primary} text-white p-3 rounded-xl font-bold`}><Send size={18} /></button>
+
+            <form onSubmit={handleAi} className="p-3 bg-white flex gap-2 border-t border-gray-100">
+              <input
+                value={aiQuery}
+                onChange={e => setAiQuery(e.target.value)}
+                placeholder="Ej: ¿Qué madera recomiendas para exterior?"
+                className={`flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 focus:border-purple-400 focus:ring-1 focus:ring-purple-200 outline-none transition-all`}
+              />
+              <button type="submit" aria-label="Enviar" className={`bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white p-3 rounded-xl font-bold shadow-md transition-all active:scale-95`}>
+                <Send size={18} />
+              </button>
             </form>
           </div>
         </div>
