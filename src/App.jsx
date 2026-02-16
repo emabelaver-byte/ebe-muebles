@@ -12,7 +12,7 @@ import {
   User, Paperclip, X, Check, Table, DoorOpen, ArrowLeft, Truck, Store, Map, Users,
   Square, Triangle, Star, FileText, MessageCircle, Instagram, Upload,
   BarChart3, PieChart, Smartphone, Globe, Grid, RefreshCw, Phone, Mail, Navigation, Info, Edit, Link as LinkIcon, Eye, Bot, Download,
-  LayoutDashboard, ListOrdered
+  LayoutDashboard, ListOrdered, ExternalLink
 } from 'lucide-react';
 
 // ==============================================================================
@@ -20,7 +20,7 @@ import {
 // ==============================================================================
 
 // GEMINI API CONFIG
-const apiKey = "AlzaSyABrPRcFOGlwh1oX8BhTljlfaJDpFuKFjw";
+const apiKey = "AIzaSyABrPRcFOGlwh1oX8BhTljlfaJDpFuKFjw";
 
 const userFirebaseConfig = {
   apiKey: "AIzaSyCObM7lu1VN6kvPx9Ifgd4eo4N3bgm-Oak",
@@ -33,7 +33,7 @@ const userFirebaseConfig = {
 };
 
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userFirebaseConfig;
-const APP_ID_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'ebe-muebles-prod-v7';
+const APP_ID_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'ebe-muebles-prod-v9-final';
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -51,16 +51,16 @@ const getDirectDriveUrl = (url) => {
 
 // --- TEMA PREMIUM ---
 const THEME = {
-  bg: "bg-[#EAE2D6]", // Un tono arena más suave
+  bg: "bg-[#EAE2D6]",
   card: "bg-white border border-[#D6C4B0] shadow-sm",
   cardHover: "hover:border-[#5D4037] hover:shadow-lg transition-all duration-300 ease-out",
   accent: "text-[#8B5E3C]",
   accentBg: "bg-[#8B5E3C]",
   accentBorder: "border-[#8B5E3C]",
-  primary: "bg-[#5D4037]", // Marrón café fuerte
+  primary: "bg-[#5D4037]",
   primaryText: "text-[#5D4037]",
   primaryHover: "hover:bg-[#3E2723]",
-  secondary: "bg-[#7A8D6F]", // Verde oliva suave
+  secondary: "bg-[#7A8D6F]",
   secondaryText: "text-[#7A8D6F]",
   textMain: "text-[#2C241F]",
   textMuted: "text-[#6B5A4E]",
@@ -79,7 +79,7 @@ const DATOS_CONTACTO = {
   ubicacion_texto: "Alta Gracia, Córdoba"
 };
 
-// DEFAULTS COMPACTOS (Para no llenar memoria innecesariamente, se expandirán si Firestore está vacío)
+// DEFAULTS COMPACTOS
 const DEFAULT_COSTOS = {
   madera_basica: 8500, madera_intermedia: 9700, madera_premium: 11000,
   madera_p_ext_basica: 13500, madera_p_ext_intermedia: 14500, madera_p_ext_premium: 16000,
@@ -270,7 +270,7 @@ const GlobalStyles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700;800&display=swap');
     
-    body { font-family: 'Inter', sans-serif; background-color: #E8DCCA; }
+    body { font-family: 'Inter', sans-serif; background-color: #F5F2EB; }
     h1, h2, h3, h4, h5, h6 { font-family: 'Montserrat', sans-serif; }
       
     @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-5px); } 100% { transform: translateY(0px); } }
@@ -295,7 +295,7 @@ const BackgroundAmbience = React.memo(() => (
 ));
 
 const Header = React.memo(({ onBack, title, onLogoClick, showCart, cartCount, onCartClick, logoUrl }) => (
-  <header className="sticky top-0 z-20 backdrop-blur-md bg-[#E8DCCA]/95 border-b border-[#D6C4B0] py-4 px-4 flex justify-between items-center transition-all shadow-sm">
+  <header className="sticky top-0 z-20 backdrop-blur-md bg-[#F5F2EB]/95 border-b border-[#D6C4B0] py-4 px-4 flex justify-between items-center transition-all shadow-sm">
     <div className="flex items-center gap-3">
       {onBack && (
         <button onClick={onBack} aria-label="Volver" className={`p-2.5 rounded-full hover:bg-white/50 ${THEME.textMain} transition-colors active:scale-95`}>
@@ -393,6 +393,7 @@ const App = () => {
   const [editMaterialId, setEditMaterialId] = useState(null);
   const [editMaterialData, setEditMaterialData] = useState({});
 
+
   // Flow State
   const [catSeleccionada, setCatSeleccionada] = useState(null);
   const [muebleSeleccionado, setMuebleSeleccionado] = useState(null);
@@ -446,20 +447,6 @@ const App = () => {
     script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
     script.onload = () => setPdfLibLoaded(true);
     document.body.appendChild(script);
-  }, []);
-
-  // --- SEO PARA ARGENTINA ---
-  useEffect(() => {
-    document.title = "eBe Muebles | Carpintería de Autor en Alta Gracia, Córdoba";
-    const metaDescription = document.querySelector('meta[name="description"]');
-    if (metaDescription) {
-      metaDescription.setAttribute("content", "eBe Muebles: Diseño y fabricación de muebles a medida en Alta Gracia, Córdoba. Mesas, sillas, vestidores y muebles industriales. Envíos a todo el país.");
-    } else {
-      const meta = document.createElement('meta');
-      meta.name = "description";
-      meta.content = "eBe Muebles: Diseño y fabricación de muebles a medida en Alta Gracia, Córdoba. Mesas, sillas, vestidores y muebles industriales. Envíos a todo el país.";
-      document.head.appendChild(meta);
-    }
   }, []);
 
   const getHeaderTitle = useCallback(() => {
@@ -625,7 +612,7 @@ const App = () => {
 
   const uploadDefaultMaterials = async () => {
     if (!isAdmin) return;
-    if (!confirm("Esto cargará todas las maderas por defecto a la base de datos de la web. ¿Deseas continuar?")) return;
+    if (!confirm("Esto cargará todas las maderas por defecto a la base de datos. ¿Deseas continuar?")) return;
 
     try {
       const batch = writeBatch(db);
@@ -674,6 +661,15 @@ const App = () => {
       console.error("Error cargando defaults:", e);
       alert("Hubo un error al cargar las materialidades.");
     }
+  };
+
+  // Helper para obtener label de patas
+  const getPatasLabel = (tipo, modelo) => {
+    if (!tipo || tipo === 'sin_patas') return '';
+    const group = OPCIONES_PATAS[tipo];
+    if (!group) return '';
+    const leg = group.find(p => p.id === modelo);
+    return leg ? `${leg.nombre} (${tipo === 'metal' ? 'Metal' : 'Madera'})` : '';
   };
 
   const handleCostoChange = (key, val) => {
@@ -882,11 +878,22 @@ const App = () => {
     if (!pdfLibLoaded) return alert("Cargando generador de PDF, intenta en unos segundos...");
 
     const element = document.createElement('div');
-    // HTML del PDF oculto
+    // HTML del PDF oculto - DISEÑO FACTURA PROFESIONAL A4 EXACTO
     const total = carrito.reduce((a, b) => a + b.precio, 0);
     const fecha = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const idPresupuesto = Math.floor(1000 + Math.random() * 9000);
 
     const itemsHtml = carrito.map(item => {
+      // Buscar imagen del material
+      const visual = getMaterialVisual(item.config, maderas, melaminas);
+      let visualHtml = '';
+      if (visual.type === 'img' && visual.value) {
+        // Imagen real de la textura
+        visualHtml = `<img src="${getDirectDriveUrl(visual.value)}" style="width:40px;height:40px;border-radius:4px;object-fit:cover;border:1px solid #ddd;display:block;margin-right:15px;">`;
+      } else if (visual.type === 'css') {
+        visualHtml = `<span style="display:block;width:40px;height:40px;border-radius:4px;background:${visual.value};margin-right:15px;border:1px solid #ddd;"></span>`;
+      }
+
       let acabadoLabel = '';
       if (item.config.acabado) {
         if (item.config.acabado === 'natural') acabadoLabel = 'Natural';
@@ -894,68 +901,120 @@ const App = () => {
         else if (item.config.acabado === 'laca') acabadoLabel = 'Laca Poliuretánica';
         else acabadoLabel = item.config.acabado;
       }
+
+      const patasLabel = getPatasLabel(item.config.tipoPatas, item.config.modeloPatas);
+
       return `
         <tr style="border-bottom: 1px solid #eee;">
-          <td style="padding: 10px;"><strong>${item.mueble.nombre}</strong><br/><span style="font-size:12px;color:#666">${item.config.materialNombre}</span></td>
-          <td style="padding: 10px;">${item.config.ancho}x${item.config.largo}cm ${item.config.cantCajones > 0 ? `(${item.config.cantCajones} Cajones)` : ''} ${acabadoLabel ? ` - ${acabadoLabel}` : ''}</td>
-          <td style="padding: 10px;text-align:right;">$${new Intl.NumberFormat('es-AR').format(item.precio)}</td>
+          <td style="padding: 15px 10px; vertical-align: middle;">
+             <div style="display:flex; align-items: center;">
+                ${visualHtml}
+                <div>
+                    <strong style="font-size: 13px; display:block; margin-bottom: 2px; text-transform: uppercase;">${item.mueble.nombre}</strong>
+                    <span style="font-size:11px;color:#666">${item.config.materialNombre}</span>
+                </div>
+             </div>
+          </td>
+          <td style="padding: 15px 10px; vertical-align: middle; color: #444; font-size: 12px;">
+             ${item.config.ancho}x${item.config.largo}cm 
+             ${item.config.cantCajones > 0 ? `<br/>• ${item.config.cantCajones} Cajones` : ''} 
+             ${acabadoLabel ? `<br/>• Terminación: ${acabadoLabel}` : ''}
+             ${patasLabel ? `<br/>• Patas: ${patasLabel}` : ''}
+          </td>
+          <td style="padding: 15px 10px; text-align:right; vertical-align: middle; font-weight: bold; font-size: 13px;">$${new Intl.NumberFormat('es-AR').format(item.precio)}</td>
         </tr>`;
     }).join('');
 
     element.innerHTML = `
-      <div style="padding: 40px; font-family: 'Helvetica', sans-serif; color: #333; position: relative; overflow: hidden;">
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 100px; color: rgba(93, 64, 55, 0.05); font-weight: 900; z-index: -1; white-space: nowrap;">EBE MUEBLES</div>
-        <div style="display:flex; justify-content:space-between; margin-bottom:40px; border-bottom: 3px solid #5D4037; padding-bottom:20px;">
-           <img src="${getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}" style="height:60px;" />
+      <div style="width: 210mm; min-height: 297mm; padding: 15mm; box-sizing: border-box; font-family: 'Helvetica', sans-serif; color: #333; background: white; position: relative;">
+        
+        <!-- MARCA DE AGUA -->
+        <div style="position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 120px; color: rgba(93, 64, 55, 0.04); font-weight: 900; z-index: 0; white-space: nowrap; pointer-events: none;">EBE MUEBLES</div>
+
+        <!-- CABECERA -->
+        <div style="display:flex; justify-content:space-between; align-items: flex-start; border-bottom: 4px solid #5D4037; padding-bottom: 20px; margin-bottom: 30px;">
+           <div style="display: flex; flex-direction: column;">
+               <img src="${getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}" style="height:70px; object-fit: contain; margin-bottom: 10px;" />
+               <div style="font-size: 11px; color: #555; line-height: 1.4;">
+                  <strong>${DATOS_CONTACTO.nombre_negocio}</strong><br/>
+                  ${DATOS_CONTACTO.ubicacion_texto}<br/>
+                  Tel: +${DATOS_CONTACTO.telefono_whatsapp}<br/>
+                  Instagram: @ebe.muebles
+               </div>
+           </div>
            <div style="text-align:right;">
-             <h1 style="margin:0; font-size:24px; color:#5D4037; text-transform:uppercase; font-weight: 800;">Presupuesto</h1>
-             <p style="margin:5px 0; color:#666; font-size: 14px;">Fecha: ${fecha}</p>
+             <h1 style="margin:0; font-size:32px; color:#5D4037; text-transform:uppercase; font-weight: 800; letter-spacing: -1px;">Presupuesto</h1>
+             <p style="margin:5px 0; color:#888; font-size: 14px; font-weight: 500;"># ${idPresupuesto}</p>
+             <p style="margin:0; color:#333; font-size: 14px; font-weight: bold;">Fecha: ${fecha}</p>
            </div>
         </div>
         
-        <div style="display: flex; gap: 40px; margin-bottom: 40px;">
-           <div style="flex: 1;">
-              <span style="font-size: 12px; font-weight: 700; color: #8B5E3C; text-transform: uppercase; border-bottom: 2px solid #E0D8C3; padding-bottom: 4px; display: inline-block; margin-bottom: 10px;">De</span>
-              <p style="margin: 4px 0; font-size: 14px; font-weight: bold;">${DATOS_CONTACTO.nombre_negocio}</p>
-              <p style="margin: 4px 0; font-size: 13px;">${DATOS_CONTACTO.ubicacion_texto}</p>
+        <!-- INFO CLIENTE -->
+        <div style="margin-bottom: 30px; background: #F9F7F2; padding: 15px; border-radius: 6px; border-left: 5px solid #8B5E3C; display: flex; justify-content: space-between;">
+           <div>
+              <span style="font-size: 10px; font-weight: 700; color: #8B5E3C; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px;">Cliente</span>
+              <h2 style="margin: 0; font-size: 16px; color: #222;">${cliente.nombre || 'Consumidor Final'}</h2>
            </div>
-           <div style="flex: 1;">
-              <span style="font-size: 12px; font-weight: 700; color: #8B5E3C; text-transform: uppercase; border-bottom: 2px solid #E0D8C3; padding-bottom: 4px; display: inline-block; margin-bottom: 10px;">Para</span>
-              <p style="margin: 4px 0; font-size: 14px; font-weight: bold;">${cliente.nombre || 'Cliente Final'}</p>
-              <p style="margin: 4px 0; font-size: 13px;">${cliente.lugar || ''}</p>
+           <div style="text-align: right;">
+              <span style="font-size: 10px; font-weight: 700; color: #8B5E3C; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px;">Contacto</span>
+              <p style="margin: 0; font-size: 12px; color: #444;">${cliente.telefono || '-'}</p>
+              <p style="margin: 0; font-size: 12px; color: #444;">${cliente.lugar || '-'}</p>
            </div>
         </div>
 
+        <!-- TABLA -->
         <table style="width:100%; border-collapse: collapse; margin-bottom:30px;">
-           <thead><tr style="background:#f8f5f2; color:#5D4037;"><th style="padding:12px;text-align:left;font-size:12px;text-transform:uppercase;">Producto</th><th style="padding:12px;text-align:left;font-size:12px;text-transform:uppercase;">Detalle</th><th style="padding:12px;text-align:right;font-size:12px;text-transform:uppercase;">Importe</th></tr></thead>
-           <tbody style="font-size: 13px;">${itemsHtml}</tbody>
+           <thead>
+              <tr style="background:#5D4037; color:white;">
+                  <th style="padding:12px 10px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing: 1px; border-top-left-radius: 4px;">Producto</th>
+                  <th style="padding:12px 10px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing: 1px;">Detalle</th>
+                  <th style="padding:12px 10px; text-align:right; font-size:11px; text-transform:uppercase; letter-spacing: 1px; border-top-right-radius: 4px;">Importe</th>
+              </tr>
+           </thead>
+           <tbody>${itemsHtml}</tbody>
         </table>
 
-        <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
-           <div style="width: 250px; background: #F9F7F2; padding: 20px; border-radius: 8px; border: 1px solid #E0D8C3;">
-              <div style="display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 2px solid #5D4037; font-weight: 800; font-size: 16px; color: #5D4037;">
-                 <span>TOTAL</span>
+        <!-- TOTALES -->
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 40px;">
+           <div style="width: 280px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: #666; padding-bottom: 5px; border-bottom: 1px dashed #ddd;">
+                 <span>Envío</span>
+                 <span>A Cotizar</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: #666; padding-bottom: 5px; border-bottom: 1px dashed #ddd;">
+                 <span>Instalación</span>
+                 <span>A Cotizar</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding-top: 10px; border-top: 3px solid #5D4037; font-weight: 900; font-size: 18px; color: #5D4037; align-items: center;">
+                 <span>TOTAL ESTIMADO</span>
                  <span>$${new Intl.NumberFormat('es-AR').format(total)}</span>
               </div>
            </div>
         </div>
 
-        <div style="margin-top:auto; padding-top:30px; border-top:1px solid #eee; font-size:11px; color:#777; line-height:1.6; position: absolute; bottom: 40px; width: 100%;">
+        <!-- PIE DE PAGINA (LEGALES) -->
+        <div style="border-top: 1px solid #ddd; padding-top: 15px; font-size: 10px; color: #666; line-height: 1.5; margin-top: auto;">
            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 30px;">
-               <div><strong style="color: #333;">CONDICIONES:</strong> Validez 10 días hábiles. Precios sujetos a verificación.</div>
-               <div><strong style="color: #333;">ENTREGAS:</strong> Demora a coordinar. Envíos a cargo del cliente.</div>
+               <div>
+                  <strong style="color: #5D4037; display: block; margin-bottom: 4px; text-transform: uppercase;">Condiciones Comerciales</strong>
+                  Este presupuesto tiene una validez de 10 días hábiles. Los precios están sujetos a verificación final vía WhatsApp. La demora de fabricación se estipula a partir de la seña.
+               </div>
+               <div>
+                  <strong style="color: #5D4037; display: block; margin-bottom: 4px; text-transform: uppercase;">Entregas y Materiales</strong>
+                  El envío corre por cuenta y responsabilidad del cliente. Trabajamos con materiales 100% naturales y procesos artesanales, garantizando piezas únicas.
+               </div>
            </div>
-           <div style="text-align:center; margin-top:20px; font-weight:700; color:#5D4037; font-size:12px; letter-spacing:1px;">GRACIAS POR ELEGIR DISEÑO ARGENTINO</div>
+           <div style="text-align:center; margin-top:30px; font-weight:800; color:#5D4037; font-size:10px; letter-spacing:2px; text-transform: uppercase;">Gracias por elegir diseño argentino</div>
         </div>
       </div>
     `;
 
-    // Configuración para html2pdf - DESCARGA AUTOMÁTICA
+    // Configuración para html2pdf - CALIDAD HD A4
     const opt = {
       margin: 0,
       filename: `Presupuesto_eBe_${cliente.nombre || 'Cliente'}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
+      image: { type: 'jpeg', quality: 1 },
+      html2canvas: { scale: 4, useCORS: true, logging: false, letterRendering: true }, // Scale 4 para máxima calidad
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
@@ -1804,7 +1863,7 @@ const App = () => {
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-16">
               {galeria.map(img => (
-                <div key={img.id} onClick={() => setSelectedImage(img)} className="aspect-square rounded-2xl overflow-hidden cursor-pointer group relative shadow-sm hover:shadow-md transition-all border border-[#E0D8C3]">
+                <div key={img.id} className="relative group aspect-square rounded-2xl overflow-hidden cursor-pointer group relative shadow-sm hover:shadow-md transition-all border border-[#E0D8C3]">
                   <img src={getDirectDriveUrl(img.src)} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
                   <div className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-100 transition-opacity">
                     <span className="text-white text-sm md:text-lg font-bold uppercase tracking-widest mb-4 px-2 text-center drop-shadow-md font-sans">{img.alt}</span>
