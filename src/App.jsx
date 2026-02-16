@@ -11,15 +11,17 @@ import {
   RectangleVertical, Box, LogOut, Save, Coins, ImagePlus, Lock, MapPin,
   User, Paperclip, X, Check, Table, DoorOpen, ArrowLeft, Truck, Store, Map, Users,
   Square, Triangle, Star, FileText, MessageCircle, Instagram, Upload,
-  BarChart3, PieChart, Smartphone, Globe, Grid, RefreshCw, Phone, Mail, Navigation, Info, Edit, Link as LinkIcon, Eye, Bot
+  BarChart3, PieChart, Smartphone, Globe, Grid, RefreshCw, Phone, Mail, Navigation, Info, Edit, Link as LinkIcon, Eye, Bot, Download
 } from 'lucide-react';
 
 // ==============================================================================
 //  1. CONFIGURACIÓN Y DATOS
 // ==============================================================================
 
-// GEMINI API CONFIG
-const apiKey = ""; // La clave se inyectará en tiempo de ejecución o debe configurarse en el entorno
+// GEMINI API CONFIG - ¡IMPORTANTE!
+// Para que el asistente funcione en la web, debes pegar tu API KEY de Google aquí abajo.
+// Consíguela en: https://aistudio.google.com/app/apikey
+const apiKey = ""AIzaSyABrPRcFOGlwh1oX8BhTIjlfaJDpFuKFjw"";
 
 const userFirebaseConfig = {
   apiKey: "AIzaSyCObM7lu1VN6kvPx9Ifgd4eo4N3bgm-Oak",
@@ -32,7 +34,7 @@ const userFirebaseConfig = {
 };
 
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userFirebaseConfig;
-const APP_ID_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'ebe-muebles-prod-v5';
+const APP_ID_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'ebe-muebles-prod-v6';
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -66,7 +68,7 @@ const THEME = {
   input: "bg-white border border-[#D6C4B0] focus:border-[#5D4037] outline-none transition-all font-sans text-[#2C241F] placeholder-[#999]"
 };
 
-// --- DATOS ESTÁTICOS (Optimizados fuera del componente) ---
+// --- DATOS ESTÁTICOS (Optimizados) ---
 const DEFAULT_LOGO_SRC = "https://cdn-icons-png.flaticon.com/512/3030/3030336.png";
 const DEFAULT_INSTAGRAM_URL = "https://www.instagram.com/_u/ebe.muebles/";
 const ADMIN_EMAILS = ['emabelaver@gmail.com', 'acevedo.gestoriadelautomotor@gmail.com'];
@@ -374,6 +376,7 @@ const App = () => {
   const [logoUrl, setLogoUrl] = useState(DEFAULT_LOGO_SRC);
   const [instagramUrl, setInstagramUrl] = useState(DEFAULT_INSTAGRAM_URL);
   const [aboutUsImageUrl, setAboutUsImageUrl] = useState('');
+  const [pdfLibLoaded, setPdfLibLoaded] = useState(false);
 
   // Analytics State
   const [visitStats, setVisitStats] = useState({ mobile: 0, desktop: 0 });
@@ -387,6 +390,7 @@ const App = () => {
   const [adminInstagramInput, setAdminInstagramInput] = useState('');
   const [adminAboutUsImageInput, setAdminAboutUsImageInput] = useState('');
   const [newMelamina, setNewMelamina] = useState({ nombre: '', css: '#ffffff', category: 'lisos', isGradient: false });
+  const [newMaterial, setNewMaterial] = useState({ nombre: '', tier: 'basica', src: '' });
   const [editMaterialId, setEditMaterialId] = useState(null);
   const [editMaterialData, setEditMaterialData] = useState({});
 
@@ -427,7 +431,7 @@ const App = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // --- PRELOADER (OPTIMIZACIÓN) ---
+  // --- PRELOADER IMÁGENES ---
   useEffect(() => {
     const preloadImages = () => {
       maderas.forEach((madera) => {
@@ -437,6 +441,14 @@ const App = () => {
     };
     if (maderas.length > 0) preloadImages();
   }, [maderas]);
+
+  // --- PDF LIB LOADER ---
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+    script.onload = () => setPdfLibLoaded(true);
+    document.body.appendChild(script);
+  }, []);
 
   const getHeaderTitle = useCallback(() => {
     if (paso === 5) return "Galería";
@@ -470,20 +482,18 @@ const App = () => {
     return onAuthStateChanged(auth, setUser);
   }, []);
 
-  // ANALYTICS & VISIT COUNTER
+  // ANALYTICS
   useEffect(() => {
     if (!user) return;
     const trackVisit = async () => {
       const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       try {
-        // Simply increment a counter in firestore
         const statsRef = doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'stats', 'visits');
         await setDoc(statsRef, {
           [isMobileDevice ? 'mobile' : 'desktop']: increment(1)
         }, { merge: true });
       } catch (e) { console.warn("Analytics error", e); }
     };
-    // Run once per session
     if (!sessionStorage.getItem('visited')) {
       trackVisit();
       sessionStorage.setItem('visited', 'true');
@@ -526,7 +536,6 @@ const App = () => {
       (snap) => { if (snap.exists()) setCostos(snap.data()); }
     );
 
-    // Stats Listener
     const unsubStats = onSnapshot(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'stats', 'visits'), (snap) => {
       if (snap.exists()) setVisitStats(snap.data());
     });
@@ -576,7 +585,6 @@ const App = () => {
 
   const removeGalleryImage = useCallback(async (id) => { if (isAdmin && typeof id === 'string') await deleteDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'gallery', id)); }, [isAdmin]);
 
-  // --- MATERIALS ADMIN ---
   const startEditMaterial = (m) => {
     setEditMaterialId(m.id);
     setEditMaterialData({ ...m });
@@ -589,6 +597,39 @@ const App = () => {
       setEditMaterialId(null);
     } catch (e) { console.error(e); alert("Error al guardar material"); }
   };
+
+  const addMaterial = async () => {
+    if (!isAdmin) return;
+    if (!newMaterial.nombre) return alert("Falta nombre");
+    try {
+      await addDoc(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'materials'), {
+        ...newMaterial,
+        id: `mat_${Date.now()}`,
+        createdAt: Date.now()
+      });
+      setNewMaterial({ nombre: '', tier: 'basica', src: '' });
+    } catch (e) { console.error(e); }
+  };
+
+  const uploadDefaultMaterials = async () => {
+    if (!isAdmin) return;
+    if (!confirm("Esto cargará todas las maderas por defecto a la base de datos. ¿Deseas continuar?")) return;
+
+    try {
+      const batch = writeBatch(db);
+      DEFAULT_MADERAS.forEach((m) => {
+        const ref = doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'materials', m.id);
+        batch.set(ref, { ...m, createdAt: serverTimestamp() });
+      });
+      await batch.commit();
+      alert("¡Maderas cargadas exitosamente!");
+    } catch (e) {
+      console.error("Error cargando defaults:", e);
+      alert("Hubo un error al cargar las maderas.");
+    }
+  };
+
+  const deleteMaterial = async (id) => { if (isAdmin) await deleteDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'materials', id)); }
 
   const addMelamina = async () => {
     if (!isAdmin) return;
@@ -607,16 +648,14 @@ const App = () => {
 
   const uploadDefaultMelamines = async () => {
     if (!isAdmin) return;
-    if (!confirm("Esto cargará todas las melaminas por defecto a la base de datos. ¿Deseas continuar?")) return;
+    if (!confirm("Esto cargará todas las melaminas por defecto a la base de datos de la web. ¿Deseas continuar?")) return;
 
     try {
       const batch = writeBatch(db);
-
       DEFAULT_MELAMINAS_DB.forEach((melamina) => {
         const ref = doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'melamines', melamina.id);
         batch.set(ref, { ...melamina, createdAt: serverTimestamp() });
       });
-
       await batch.commit();
       alert("¡Todas las materialidades han sido cargadas exitosamente!");
     } catch (e) {
@@ -780,7 +819,6 @@ const App = () => {
     setAiLoading(true);
     setAiResponse('');
 
-    // Preparamos el contexto para el prompt
     const contextText = `
       Eres el Asistente Virtual de eBe Muebles, una carpintería de autor en Alta Gracia, Córdoba.
       Tu tono es profesional, cálido y experto en diseño. Responde SOLO basándote en los siguientes productos y servicios que ofrecemos.
@@ -808,17 +846,9 @@ const App = () => {
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          contents: [{
-            role: "user",
-            parts: [{ text: contextText + "\n\nUsuario: " + aiQuery }]
-          }]
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: contextText + "\n\nUsuario: " + aiQuery }] }] })
       });
-
       const data = await response.json();
       if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
         setAiResponse(data.candidates[0].content.parts[0].text);
@@ -830,78 +860,21 @@ const App = () => {
       setAiResponse("Hubo un error de conexión. Verifica tu internet o intenta más tarde.");
     } finally {
       setAiLoading(false);
-      setAiQuery(''); // Limpiar input después de enviar
+      setAiQuery('');
     }
-  }, [aiQuery, maderas, melaminas]); // Dependencias para que se actualice si cambian los datos
+  }, [aiQuery, maderas, melaminas]);
 
-  const enviarWhatsapp = useCallback(async () => {
+  // --- FUNCIÓN DE DESCARGA PDF AUTOMÁTICA ---
+  const downloadPDF = () => {
+    if (!pdfLibLoaded) return alert("Cargando generador de PDF, intenta en unos segundos...");
+
+    const element = document.createElement('div');
+    // Creamos el HTML del PDF oculto
     const total = carrito.reduce((a, b) => a + b.precio, 0);
-
-    // Obtener el siguiente ID secuencial persistente
-    let nextOrderNumber = 1980; // Default inicial solicitado
-    try {
-      const q = query(
-        collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'orders'),
-        orderBy('orderNumber', 'desc'),
-        limit(1)
-      );
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        const lastData = querySnapshot.docs[0].data();
-        if (typeof lastData.orderNumber === 'number') {
-          nextOrderNumber = lastData.orderNumber + 1;
-        }
-      }
-    } catch (e) {
-      console.error("Error obteniendo número de pedido, usando fallback", e);
-    }
-
-    // Auto-generar el PDF para que el usuario pueda enviarlo si lo desea
-    generarPresupuestoPDF(nextOrderNumber);
-
-    const newOrder = {
-      orderNumber: nextOrderNumber,
-      cliente,
-      items: carrito,
-      total,
-      createdAt: Date.now()
-    };
-
-    try {
-      // Guardar en Firestore para historial y contador
-      await addDoc(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'orders'), newOrder);
-    } catch (e) {
-      console.error("Error guardando pedido", e);
-    }
-
-    let text = `👋 Hola *eBe Muebles*, soy ${cliente.nombre}.\n📍 Desde: ${cliente.lugar} (${cliente.entrega === 'taller' ? 'Retiro en Taller' : 'Envío a domicilio'})\n📱 Tel: ${cliente.telefono || 'No especificado'}\n📋 *PEDIDO WEB #${nextOrderNumber}*\n\n`;
-    carrito.forEach(i => {
-      text += `🔹 *${i.mueble.nombre}* (${i.config.ancho}x${i.config.largo}cm)\n   ${i.config.materialNombre}\n`;
-      if (i.precio === 0) text += `   (A Cotizar)\n`;
-    });
-    text += `\n💰 *Total Estimado: $${new Intl.NumberFormat('es-AR').format(total)}*`;
-    text += `\n\n📄 *He descargado el presupuesto en PDF desde la web para adjuntarlo.*`;
-    if (cliente.nombreArchivo) text += `\n📎 Archivo adjunto (Plano/Foto): ${cliente.nombreArchivo}`;
-
-    window.open(`https://wa.me/${DATOS_CONTACTO.telefono_whatsapp}?text=${encodeURIComponent(text)}`, '_blank');
-  }, [carrito, cliente]);
-
-  const generarPresupuestoPDF = (orderIdParam = null) => {
-    const total = carrito.reduce((a, b) => a + b.precio, 0);
-    const printWindow = window.open('', '_blank');
     const fecha = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const idPresupuesto = orderIdParam || 1980; // Fallback visual
-    const logoSrc = getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC;
+    const idPresupuesto = 1980; // Placeholder ID for simple download
 
     const itemsHtml = carrito.map(item => {
-      const visual = getMaterialVisual(item.config, maderas, melaminas);
-      let visualHtml = '';
-      if (visual.type === 'img' && visual.value) {
-        visualHtml = `<img src="${getDirectDriveUrl(visual.value)}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px;border:1px solid #ccc">`;
-      } else {
-        visualHtml = `<span style="display:inline-block;width:24px;height:24px;border-radius:50%;background:${visual.value};vertical-align:middle;margin-right:8px;border:1px solid #ccc"></span>`;
-      }
-
       let acabadoLabel = '';
       if (item.config.acabado) {
         if (item.config.acabado === 'natural') acabadoLabel = 'Natural';
@@ -909,98 +882,51 @@ const App = () => {
         else if (item.config.acabado === 'laca') acabadoLabel = 'Laca Poliuretánica';
         else acabadoLabel = item.config.acabado;
       }
-
-      const isPuerta = item.mueble.id?.includes('puerta') || item.mueble.id === 'puerta_custom';
-      const marcoText = isPuerta ? (item.config.marco ? '• Incluye Marco Completo<br/>' : '• Hoja Suelta (Sin Marco)<br/>') : (item.config.marco ? '• Incluye Marco<br/>' : '');
-
       return `
-        <tr>
-            <td width="40%">
-                <div style="display:flex;align-items:center">
-                    ${visualHtml}
-                    <div>
-                        <strong>${item.mueble.nombre}</strong><br/>
-                        <span style="color:#666;font-style:italic;font-size:12px">${item.config.materialNombre}</span>
-                    </div>
-                </div>
-            </td>
-            <td width="40%" style="color:#444">
-                • Medidas: ${item.config.ancho} x ${item.config.largo}cm<br/>
-                ${marcoText}
-                ${item.config.cantCajones > 0 ? `• ${item.config.cantCajones} Cajones<br/>` : ''}
-                ${(item.config.tipoConstruccion === 'maciza' || item.config.tipoConstruccion === 'puerta_placa') ? `• Terminación: <strong>${acabadoLabel}</strong>` : ''}
-            </td>
-            <td width="20%" style="text-align:right;font-weight:700">$${new Intl.NumberFormat('es-AR').format(item.precio)}</td>
-        </tr>
-        `;
+        <tr style="border-bottom: 1px solid #eee;">
+          <td style="padding: 10px;"><strong>${item.mueble.nombre}</strong><br/><span style="font-size:12px;color:#666">${item.config.materialNombre}</span></td>
+          <td style="padding: 10px;">${item.config.ancho}x${item.config.largo}cm ${item.config.cantCajones > 0 ? `(${item.config.cantCajones} Cajones)` : ''} ${acabadoLabel ? ` - ${acabadoLabel}` : ''}</td>
+          <td style="padding: 10px;text-align:right;">$${new Intl.NumberFormat('es-AR').format(item.precio)}</td>
+        </tr>`;
     }).join('');
 
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Presupuesto #${idPresupuesto} - EBE Muebles</title>
-          <style>
-            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800&family=Inter:wght@400;500;600&display=swap');
-            @page { size: A4; margin: 0; }
-            body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: #fff; color: #1a1a1a; -webkit-print-color-adjust: exact; width: 100%; }
-            .page-container { width: 100%; max-width: 210mm; margin: 0 auto; padding: 40px; box-sizing: border-box; position: relative; min-height: 297mm; }
-            .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 4px solid #5D4037; padding-bottom: 20px; }
-            .logo-box img { height: 80px; object-fit: contain; }
-            .doc-info { text-align: right; }
-            .doc-title { font-family: 'Montserrat', sans-serif; font-size: 32px; font-weight: 800; color: #5D4037; letter-spacing: -1px; margin: 0; text-transform: uppercase; }
-            .doc-meta { margin-top: 5px; font-size: 14px; color: #666; font-weight: 500; }
-            .info-grid { display: flex; gap: 40px; margin-bottom: 40px; }
-            .info-col { flex: 1; }
-            .info-label { font-family: 'Montserrat', sans-serif; font-size: 12px; font-weight: 700; color: #8B5E3C; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; border-bottom: 2px solid #E0D8C3; padding-bottom: 4px; display: inline-block; }
-            .info-text p { margin: 4px 0; font-size: 13px; color: #333; line-height: 1.4; }
-            .info-text strong { font-weight: 700; color: #000; font-size: 14px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; border: 1px solid #eee; }
-            th { text-align: left; padding: 14px 12px; background-color: #f8f5f2; color: #5D4037; font-family: 'Montserrat', sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid #E0D8C3; }
-            td { padding: 16px 12px; border-bottom: 1px solid #eee; font-size: 13px; vertical-align: top; color: #333; }
-            .totals-section { display: flex; justify-content: flex-end; margin-top: 20px; margin-bottom: 50px; }
-            .totals-box { width: 300px; background: #F9F7F2; padding: 25px; border-radius: 8px; border: 1px solid #E0D8C3; }
-            .total-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; color: #555; font-weight: 500; }
-            .total-final { display: flex; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 2px solid #5D4037; font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 18px; color: #5D4037; }
-            .footer { position: absolute; bottom: 40px; left: 40px; right: 40px; padding-top: 30px; border-top: 1px solid #eee; font-size: 11px; color: #777; line-height: 1.6; text-align: justify; }
-            .footer h4 { font-family: 'Montserrat', sans-serif; font-size: 12px; color: #333; margin: 0 0 5px 0; font-weight: 700; }
-            .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 100px; color: rgba(93, 64, 55, 0.04); font-family: 'Montserrat', sans-serif; font-weight: 900; z-index: -1; pointer-events: none; white-space: nowrap; }
-          </style>
-        </head>
-        <body>
-          <div class="page-container">
-            <div class="watermark">EBE MUEBLES</div>
-            <div class="header">
-                <div class="logo-box"><img src="${logoSrc}" alt="Logo EBE" /></div>
-                <div class="doc-info"><h1 class="doc-title">Presupuesto</h1><div class="doc-meta">Nº ${idPresupuesto} &nbsp;|&nbsp; Fecha: ${fecha}</div></div>
-            </div>
-            <div class="info-grid">
-                <div class="info-col"><span class="info-label">De</span><div class="info-text"><p><strong>${DATOS_CONTACTO.nombre_negocio}</strong></p><p>${DATOS_CONTACTO.ubicacion_texto}</p><p>Instagram: @ebe.muebles</p></div></div>
-                <div class="info-col"><span class="info-label">Para</span><div class="info-text"><p><strong>${cliente.nombre || 'Consumidor Final'}</strong></p><p>${cliente.lugar ? 'Ubicación: ' + cliente.lugar : ''}</p><p>${cliente.entrega === 'taller' ? 'Modo: Retiro en Taller' : 'Modo: Envío a Domicilio'}</p></div></div>
-            </div>
-            <table>
-                <thead><tr><th>Producto</th><th>Detalles y Especificaciones</th><th style="text-align:right">Importe</th></tr></thead>
-                <tbody>${itemsHtml}</tbody>
-            </table>
-            <div class="totals-section">
-                <div class="totals-box">
-                    <div class="total-row"><span>Subtotal</span><span>$${new Intl.NumberFormat('es-AR').format(total)}</span></div>
-                    <div class="total-row"><span>Envío</span><span>A Cotizar</span></div>
-                    <div class="total-final"><span>TOTAL ESTIMADO</span><span>$${new Intl.NumberFormat('es-AR').format(total)}</span></div>
-                </div>
-            </div>
-            <div class="footer">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px">
-                    <div><h4>CONDICIONES COMERCIALES</h4><p>Este presupuesto tiene una validez de 10 días hábiles. Los precios están sujetos a verificación final vía WhatsApp antes de confirmar el pedido.</p></div>
-                    <div><h4>TIEMPOS Y ENTREGAS</h4><p>La demora de fabricación se coordina al momento de la seña. Los envíos corren por cuenta y riesgo del cliente.</p></div>
-                </div>
-                <div style="text-align:center;margin-top:40px;font-weight:700;color:#5D4037;font-size:12px;letter-spacing:1px">GRACIAS POR ELEGIR DISEÑO ARGENTINO</div>
-            </div>
-          </div>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    setTimeout(() => { printWindow.print(); }, 800);
+    element.innerHTML = `
+      <div style="padding: 40px; font-family: sans-serif; color: #333;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:40px; border-bottom: 3px solid #5D4037; padding-bottom:20px;">
+           <img src="${getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}" style="height:60px;" />
+           <div style="text-align:right;">
+             <h1 style="margin:0; font-size:24px; color:#5D4037; text-transform:uppercase;">Presupuesto</h1>
+             <p style="margin:5px 0; color:#666;">Fecha: ${fecha}</p>
+           </div>
+        </div>
+        <div style="margin-bottom:30px;">
+           <p><strong>Para:</strong> ${cliente.nombre}</p>
+           <p><strong>Ubicación:</strong> ${cliente.lugar}</p>
+        </div>
+        <table style="width:100%; border-collapse: collapse; margin-bottom:30px;">
+           <thead><tr style="background:#f8f5f2; color:#5D4037;"><th style="padding:10px;text-align:left;">Producto</th><th style="padding:10px;text-align:left;">Detalle</th><th style="padding:10px;text-align:right;">Importe</th></tr></thead>
+           <tbody>${itemsHtml}</tbody>
+        </table>
+        <div style="text-align:right; margin-top:20px;">
+           <h2 style="color:#5D4037;">Total: $${new Intl.NumberFormat('es-AR').format(total)}</h2>
+        </div>
+        <div style="margin-top:50px; font-size:11px; color:#777; text-align:center; border-top:1px solid #eee; padding-top:20px;">
+           Gracias por elegir eBe Muebles - Diseño Argentino
+        </div>
+      </div>
+    `;
+
+    // Configuración para html2pdf
+    const opt = {
+      margin: 10,
+      filename: `Presupuesto_eBe_${cliente.nombre || 'Cliente'}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    // Ejecutar descarga
+    window.html2pdf().set(opt).from(element).save();
   };
 
   const nextImage = useCallback((e) => { e && e.stopPropagation(); setSelectedImage(prev => galeria[(galeria.findIndex(i => i.id === prev.id) + 1) % galeria.length]); }, [galeria]);
@@ -1033,14 +959,10 @@ const App = () => {
           <button onClick={() => { signOut(auth); setIsAdmin(false); signInAnonymously(auth); }} className="w-full text-red-500 flex items-center justify-center md:justify-start gap-2 hover:bg-red-50 p-3 rounded-xl transition-colors font-bold text-sm"><LogOut size={20} /> <span className="hidden md:block">Salir</span></button>
         </div>
       </div>
-
-      {/* Content Admin */}
       <div className="flex-1 ml-20 md:ml-64 p-6 md:p-10 overflow-y-auto max-h-screen">
         {adminTab === 'dashboard' && (
           <div className="space-y-6">
             <div className="text-3xl font-bold text-[#333]">Panel de Control</div>
-
-            {/* Stats Widget */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
                 <h4 className="text-xs font-bold text-[#999] uppercase tracking-widest mb-2">Visitas Totales</h4>
@@ -1050,20 +972,39 @@ const App = () => {
                   <span className="flex items-center gap-1"><Monitor size={14} /> {visitStats.desktop} PC</span>
                 </div>
               </div>
-
-              <a href="https://analytics.google.com/" target="_blank" rel="noreferrer" className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-colors group">
-                <BarChart3 size={32} className="text-[#F4B400] mb-3 group-hover:scale-110 transition-transform" />
-                <h4 className="font-bold text-[#333]">Ir a Google Analytics</h4>
-                <p className="text-xs text-gray-500 mt-1">Ver métricas detalladas</p>
-              </a>
             </div>
           </div>
         )}
-
         {adminTab === 'materials' && (
           <div className="space-y-6 max-w-5xl">
             <div className="bg-white p-6 rounded-xl border border-[#E0D8C3]">
-              <h3 className="font-bold text-[#8B5E3C] uppercase text-sm mb-4 border-b pb-2">Editar Materiales (Maderas)</h3>
+              <div className="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 className="font-bold text-[#8B5E3C] uppercase text-sm">Editar Materiales (Maderas)</h3>
+                <button onClick={uploadDefaultMaterials} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors shadow-sm" title="Cargar catálogo de maderas">
+                  <Save size={16} /> Sincronizar Defaults
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-6">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-gray-500">Nombre</label>
+                  <input value={newMaterial.nombre} onChange={e => setNewMaterial({ ...newMaterial, nombre: e.target.value })} className="border p-2 rounded text-sm font-medium" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-gray-500">Categoría</label>
+                  <select className="w-full border p-1 rounded text-sm bg-white" value={newMaterial.tier} onChange={e => setNewMaterial({ ...newMaterial, tier: e.target.value })}>
+                    <option value="basica">Básica</option>
+                    <option value="intermedia">Intermedia</option>
+                    <option value="premium">Premium</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-gray-500">URL Textura</label>
+                  <input className="w-full border p-1 rounded text-sm" value={newMaterial.src} onChange={e => setNewMaterial({ ...newMaterial, src: e.target.value })} />
+                </div>
+                <button onClick={addMaterial} className="bg-[#5D4037] text-white p-2 rounded font-bold text-sm h-10 hover:bg-[#3E2723]">AGREGAR</button>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {maderas.map(m => (
                   <div key={m.id} className="border border-gray-200 rounded-lg p-4 relative group hover:border-[#8B5E3C] transition-all bg-white">
@@ -1089,7 +1030,10 @@ const App = () => {
                         <div className="h-24 bg-gray-100 rounded mb-3 overflow-hidden"><img src={getDirectDriveUrl(m.src)} className="w-full h-full object-cover" /></div>
                         <h4 className="font-bold text-[#333]">{m.nombre}</h4>
                         <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full uppercase font-bold text-[10px]">{m.tier}</span>
-                        <button onClick={() => startEditMaterial(m)} aria-label="Editar material" className="absolute top-2 right-2 p-1.5 bg-white border rounded-full text-gray-500 hover:text-[#8B5E3C] hover:border-[#8B5E3C]"><Edit size={14} /></button>
+                        <div className="absolute top-2 right-2 flex gap-1">
+                          <button onClick={() => startEditMaterial(m)} className="p-1.5 bg-white border rounded-full text-gray-500 hover:text-[#8B5E3C] hover:border-[#8B5E3C]"><Edit size={14} /></button>
+                          <button onClick={() => deleteMaterial(m.id)} className="p-1.5 bg-white border rounded-full text-red-400 hover:text-red-600 hover:border-red-600"><Trash2 size={14} /></button>
+                        </div>
                       </>
                     )}
                   </div>
@@ -1098,107 +1042,23 @@ const App = () => {
             </div>
           </div>
         )}
-
-        {adminTab === 'orders' && (
-          <div className="space-y-6 max-w-6xl">
-            <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
-              <h3 className="font-bold text-[#8B5E3C] uppercase text-sm mb-4 border-b pb-2">Pedidos Recientes</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left text-gray-500">
-                  <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3">#</th>
-                      <th className="px-6 py-3">Fecha</th>
-                      <th className="px-6 py-3">Cliente</th>
-                      <th className="px-6 py-3">Items</th>
-                      <th className="px-6 py-3 text-right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ordersList.map(order => (
-                      <tr key={order.id} className="bg-white border-b hover:bg-gray-50">
-                        <td className="px-6 py-4 font-bold text-[#5D4037]">#{order.orderNumber}</td>
-                        <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
-                          {new Date(order.createdAt).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 font-bold text-[#333]">
-                          {order.cliente.nombre}
-                          <div className="text-xs font-normal text-gray-500">{order.cliente.lugar}</div>
-                          <div className="flex items-center gap-1 text-xs text-gray-400 mt-1"><Phone size={10} /> {order.cliente.telefono || '-'}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {order.items.map((i, idx) => (
-                            <div key={idx} className="text-xs mb-1">• {i.mueble.nombre} ({i.config.materialNombre})</div>
-                          ))}
-                        </td>
-                        <td className="px-6 py-4 text-right font-bold text-[#5D4037]">
-                          ${new Intl.NumberFormat('es-AR').format(order.total)}
-                        </td>
-                      </tr>
-                    ))}
-                    {ordersList.length === 0 && <tr><td colSpan="5" className="text-center py-8">No hay pedidos registrados aún.</td></tr>}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ... (Otros tabs admin igual que antes) ... */}
-        {adminTab === 'gallery' && (
-          <div className="space-y-6">
-            <div className="bg-white p-6 rounded-xl border border-[#E0D8C3]">
-              <h3 className="font-bold uppercase text-sm text-[#8B5E3C] mb-4">Agregar Foto</h3>
-              <div className="flex gap-2">
-                <input value={newImage.url} onChange={e => setNewImage({ ...newImage, url: e.target.value })} placeholder="URL Imagen" className="flex-1 border p-2 rounded text-sm font-medium" />
-                <input value={newImage.alt} onChange={e => setNewImage({ ...newImage, alt: e.target.value })} placeholder="Título" className="flex-1 border p-2 rounded text-sm font-medium" />
-                <button onClick={addGalleryImage} className="bg-[#5D4037] text-white p-2 rounded hover:bg-[#3E2723] transition-colors"><Plus /></button>
-              </div>
-            </div>
-            <div className="grid grid-cols-4 gap-4">
-              {galeria.map(img => (
-                <div key={img.id} className="relative group aspect-square rounded-xl overflow-hidden border border-[#E0D8C3]">
-                  <img src={getDirectDriveUrl(img.src)} className="w-full h-full object-cover" loading="lazy" decoding="async" />
-                  <button onClick={() => removeGalleryImage(img.id)} className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16} /></button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {adminTab === 'melaminas' && (
           <div className="space-y-6 max-w-5xl">
             <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
               <div className="flex justify-between items-center mb-4 border-b pb-2">
                 <h3 className="font-bold uppercase text-sm text-[#8B5E3C]">Gestión de Melaminas</h3>
-                {/* Botón Disquete para Cargar Defaults */}
-                <button
-                  onClick={uploadDefaultMelamines}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors shadow-sm"
-                  title="Cargar catálogo completo de melaminas por defecto a la base de datos"
-                >
-                  <Save size={16} /> Cargar Defaults
+                <button onClick={uploadDefaultMelamines} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors shadow-sm" title="Cargar catálogo completo de melaminas">
+                  <Save size={16} /> Sincronizar Defaults
                 </button>
               </div>
+              <div className="text-xs text-gray-500 mb-4">Usa el botón "Sincronizar Defaults" para cargar todas las texturas del código a la web.</div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                {/* Formulario simple para agregar manual */}
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-gray-500">Nombre</label>
                   <input value={newMelamina.nombre} onChange={e => setNewMelamina({ ...newMelamina, nombre: e.target.value })} className="border p-2 rounded text-sm font-medium" />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-gray-500">Categoría</label>
-                  <select value={newMelamina.category} onChange={e => setNewMelamina({ ...newMelamina, category: e.target.value })} className="border p-2 rounded text-sm bg-white font-medium">
-                    {CATEGORIAS_MELAMINA.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-gray-500">Color/Gradiente CSS</label>
-                  <div className="flex gap-2">
-                    <input value={newMelamina.css} onChange={e => setNewMelamina({ ...newMelamina, css: e.target.value })} className="border p-2 rounded text-sm flex-1 font-medium" />
-                    <div className="w-10 h-10 rounded border" style={{ background: newMelamina.css }}></div>
-                  </div>
-                </div>
-                <button onClick={addMelamina} className="bg-[#5D4037] text-white p-2 rounded font-bold text-sm h-10 hover:bg-[#3E2723]">AGREGAR</button>
+                <button onClick={addMelamina} className="bg-[#5D4037] text-white p-2 rounded font-bold text-sm h-10 hover:bg-[#3E2723]">AGREGAR MANUAL</button>
               </div>
             </div>
 
@@ -1209,7 +1069,6 @@ const App = () => {
                     <div className="w-8 h-8 rounded border" style={{ background: m.css }}></div>
                     <div>
                       <div className="font-bold text-xs text-gray-800">{m.nombre}</div>
-                      <div className="text-[10px] text-gray-500 uppercase font-semibold">{CATEGORIAS_MELAMINA.find(c => c.id === m.category)?.label}</div>
                     </div>
                   </div>
                   <button onClick={() => deleteMelamina(m.id)} className="text-red-300 hover:text-red-500"><Trash2 size={16} /></button>
@@ -1221,6 +1080,9 @@ const App = () => {
 
         {adminTab === 'prices' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl">
+            <div className="col-span-full flex justify-end">
+              <button onClick={saveCostos} className="flex items-center gap-2 bg-green-600 text-white py-2 px-4 rounded-lg font-bold shadow-md hover:bg-green-700 transition-all"><Save size={18} /> GUARDAR CAMBIOS</button>
+            </div>
             {Object.entries(CATEGORIAS_COSTOS).map(([cat, keys]) => (
               <div key={cat} className="bg-white p-6 rounded-xl border border-[#E0D8C3]">
                 <h3 className="font-bold text-[#8B5E3C] uppercase text-sm mb-4 border-b pb-2">{cat}</h3>
@@ -1234,13 +1096,15 @@ const App = () => {
                 </div>
               </div>
             ))}
-            <button onClick={saveCostos} className="fixed bottom-6 right-6 bg-[#5D4037] text-white p-4 rounded-full shadow-xl hover:scale-105 transition-transform"><Save size={24} /></button>
           </div>
         )}
 
         {adminTab === 'config' && (
           <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] space-y-4 max-w-lg">
-            <h3 className="font-bold text-[#5D4037] uppercase text-sm">Configuración General</h3>
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-[#5D4037] uppercase text-sm">Configuración General</h3>
+              <button onClick={handleSaveSettings} className="bg-[#5D4037] text-white p-2 rounded-lg hover:bg-[#3E2723]"><Save size={20} /></button>
+            </div>
             <div>
               <label className="text-xs font-bold text-gray-500 mb-1 block">URL Logo Principal</label>
               <input value={adminLogoInput} onChange={e => setAdminLogoInput(e.target.value)} placeholder="https://..." className="w-full border p-2 rounded text-sm font-medium" />
@@ -1248,13 +1112,11 @@ const App = () => {
             <div>
               <label className="text-xs font-bold text-gray-500 mb-1 block">URL Imagen "Sobre Nosotros"</label>
               <input value={adminAboutUsImageInput} onChange={e => setAdminAboutUsImageInput(e.target.value)} placeholder="https://..." className="w-full border p-2 rounded text-sm font-medium" />
-              <p className="text-[10px] text-gray-400 mt-1">Si se deja vacío, usa el icono por defecto.</p>
             </div>
             <div>
               <label className="text-xs font-bold text-gray-500 mb-1 block">Link Instagram</label>
               <input value={adminInstagramInput} onChange={e => setAdminInstagramInput(e.target.value)} placeholder="Instagram URL" className="w-full border p-2 rounded text-sm font-medium" />
             </div>
-            <button onClick={handleSaveSettings} className="bg-[#5D4037] text-white w-full py-3 rounded-lg font-bold hover:bg-[#3E2723] transition-colors mt-4">GUARDAR CAMBIOS</button>
           </div>
         )}
       </div>
@@ -1739,8 +1601,8 @@ const App = () => {
                   <span className={`text-3xl md:text-4xl font-bold ${THEME.textMain} tracking-tight font-sans`}>${new Intl.NumberFormat('es-AR').format(carrito.reduce((a, b) => a + b.precio, 0))}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-4 w-full">
-                  <button onClick={() => generarPresupuestoPDF(null)} className={`w-full py-4 rounded-xl font-bold uppercase text-[#5D4037] border border-[#5D4037] hover:bg-[#5D4037] hover:text-white transition-all flex items-center justify-center gap-2 text-xs md:text-sm`}>
-                    <FileText size={20} /> Descargar PDF
+                  <button onClick={() => downloadPDF(null)} className={`w-full py-4 rounded-xl font-bold uppercase text-[#5D4037] border border-[#5D4037] hover:bg-[#5D4037] hover:text-white transition-all flex items-center justify-center gap-2 text-xs md:text-sm`}>
+                    <Download size={20} /> Descargar PDF
                   </button>
                   <button onClick={enviarWhatsapp} disabled={!cliente.nombre} className={`w-full py-4 rounded-xl font-bold uppercase text-white shadow-lg flex items-center justify-center gap-2 transition-all ${cliente.nombre ? `${THEME.primary} hover:${THEME.primaryHover} shadow-[#5D4037]/30` : 'bg-[#E0D8C3] cursor-not-allowed text-[#999]'} text-xs md:text-sm`}>
                     <Send size={20} /> Enviar WhatsApp
