@@ -945,14 +945,14 @@ const App = () => {
 
       return `
         <tr style="${bgStyle} border-bottom: 1px solid #eee;">
-          <td style="padding: 12px 15px; vertical-align: top;">
+          <td style="padding: 10px 15px; vertical-align: top;">
              ${visualHtml}
-             <div style="font-weight: 800; color: #4E342E; font-size: 14px; text-transform: uppercase; margin-bottom: 4px;">${item.mueble.nombre}</div>
-             <div style="font-size: 11px; color: #666; line-height: 1.5; margin-left: 55px;"> <!-- Indentado para esquivar la imagen -->
+             <div style="font-weight: 800; color: #4E342E; font-size: 13px; text-transform: uppercase; margin-bottom: 4px;">${item.mueble.nombre}</div>
+             <div style="font-size: 10px; color: #666; line-height: 1.4; margin-left: 55px;"> <!-- Indentado para esquivar la imagen -->
                ${detalles.join(' • ')}
              </div>
           </td>
-          <td style="padding: 12px 15px; text-align:right; vertical-align: top; font-weight: 700; font-size: 14px; color: #333;">${precioTexto}</td>
+          <td style="padding: 10px 15px; text-align:right; vertical-align: top; font-weight: 700; font-size: 13px; color: #333;">${precioTexto}</td>
         </tr>`;
     }).join('');
 
@@ -961,33 +961,33 @@ const App = () => {
       <div style="width: 210mm; min-height: 297mm; padding: 0; margin: 0; background: #fff; font-family: 'Helvetica', sans-serif; position: relative; box-sizing: border-box;">
         
         <!-- HEADER -->
-        <div style="background-color: #F5F2EB; padding: 40px 40px 30px 40px; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid #5D4037;">
+        <div style="background-color: #F5F2EB; padding: 30px 40px 20px 40px; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid #5D4037;">
             <div style="display: flex; flex-direction: column; justify-content: center;">
-                <img src="${getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}" style="height: 60px; object-fit: contain; margin-bottom: 15px;" />
-                <div style="font-size: 10px; color: #5D4037; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">
+                <img src="${getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}" style="height: 50px; object-fit: contain; margin-bottom: 10px;" />
+                <div style="font-size: 9px; color: #5D4037; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">
                     ${DATOS_CONTACTO.nombre_negocio}<br>
                     ${DATOS_CONTACTO.ubicacion_texto}
                 </div>
             </div>
             <div style="text-align: right;">
-                <h1 style="margin: 0; font-size: 32px; color: #4E342E; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">Presupuesto</h1>
-                <div style="font-size: 16px; color: #8B5E3C; font-weight: 700; margin-top: 5px;"># ${idPresupuesto}</div>
-                <div style="font-size: 12px; color: #666; margin-top: 5px; font-weight: 500;">Fecha: ${fecha}</div>
+                <h1 style="margin: 0; font-size: 28px; color: #4E342E; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">Presupuesto</h1>
+                <div style="font-size: 14px; color: #8B5E3C; font-weight: 700; margin-top: 5px;"># ${idPresupuesto}</div>
+                <div style="font-size: 11px; color: #666; margin-top: 5px; font-weight: 500;">Fecha: ${fecha}</div>
             </div>
         </div>
 
         <!-- INFO CLIENTE -->
-        <div style="padding: 30px 40px; background-color: #fff;">
-            <div style="background-color: #FAFAFA; border: 1px solid #eee; border-left: 5px solid #8B5E3C; padding: 15px 20px; border-radius: 4px;">
+        <div style="padding: 20px 40px; background-color: #fff;">
+            <div style="background-color: #FAFAFA; border: 1px solid #eee; border-left: 5px solid #8B5E3C; padding: 12px 15px; border-radius: 4px;">
                 <table style="width: 100%;">
                     <tr>
                         <td>
-                            <span style="font-size: 9px; color: #999; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; display: block; margin-bottom: 2px;">Cliente</span>
-                            <div style="font-size: 16px; font-weight: 700; color: #333; text-transform: uppercase;">${cliente.nombre || 'Consumidor Final'}</div>
+                            <span style="font-size: 8px; color: #999; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; display: block; margin-bottom: 2px;">Cliente</span>
+                            <div style="font-size: 14px; font-weight: 700; color: #333; text-transform: uppercase;">${cliente.nombre || 'Consumidor Final'}</div>
                         </td>
                         <td style="text-align: right;">
-                             <div style="font-size: 12px; color: #555;"><strong>Tel:</strong> ${cliente.telefono || '-'}</div>
-                             <div style="font-size: 12px; color: #555; margin-top: 2px;"><strong>Ubicación:</strong> ${cliente.lugar || '-'}</div>
+                             <div style="font-size: 11px; color: #555;"><strong>Tel:</strong> ${cliente.telefono || '-'}</div>
+                             <div style="font-size: 11px; color: #555; margin-top: 2px;"><strong>Ubicación:</strong> ${cliente.lugar || '-'}</div>
                         </td>
                     </tr>
                 </table>
@@ -995,12 +995,12 @@ const App = () => {
         </div>
 
         <!-- TABLA DE ITEMS -->
-        <div style="padding: 0 40px; margin-bottom: 20px;">
+        <div style="padding: 0 40px; margin-bottom: 10px;">
             <table style="width: 100%; border-collapse: collapse;">
                 <thead>
                     <tr style="background-color: #5D4037; color: white;">
-                        <th style="padding: 12px 15px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Descripción del Producto</th>
-                        <th style="padding: 12px 15px; text-align: right; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; width: 120px;">Subtotal</th>
+                        <th style="padding: 10px 15px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Descripción del Producto</th>
+                        <th style="padding: 10px 15px; text-align: right; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; width: 100px;">Subtotal</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1010,71 +1010,66 @@ const App = () => {
         </div>
 
         <!-- TOTALES -->
-        <div style="padding: 0 40px; display: flex; justify-content: flex-end;">
+        <div style="padding: 0 40px; display: flex; justify-content: flex-end; margin-bottom: 20px;">
             <div style="width: 250px;">
                 <table style="width: 100%; border-collapse: collapse;">
                     <tr>
-                        <td style="padding: 8px 0; font-size: 12px; color: #666; border-bottom: 1px solid #eee;">Envío</td>
-                        <td style="padding: 8px 0; font-size: 12px; color: #666; text-align: right; border-bottom: 1px solid #eee;">A Cotizar</td>
+                        <td style="padding: 6px 0; font-size: 11px; color: #666; border-bottom: 1px solid #eee;">Envío</td>
+                        <td style="padding: 6px 0; font-size: 11px; color: #666; text-align: right; border-bottom: 1px solid #eee;">A Cotizar</td>
                     </tr>
                     <tr>
-                        <td style="padding: 8px 0; font-size: 12px; color: #666; border-bottom: 1px solid #eee;">Instalación</td>
-                        <td style="padding: 8px 0; font-size: 12px; color: #666; text-align: right; border-bottom: 1px solid #eee;">A Cotizar</td>
+                        <td style="padding: 6px 0; font-size: 11px; color: #666; border-bottom: 1px solid #eee;">Instalación</td>
+                        <td style="padding: 6px 0; font-size: 11px; color: #666; text-align: right; border-bottom: 1px solid #eee;">A Cotizar</td>
                     </tr>
                     <tr>
-                        <td style="padding: 15px 0; font-size: 16px; font-weight: 800; color: #4E342E;">TOTAL</td>
-                        <td style="padding: 15px 0; font-size: 20px; font-weight: 900; color: #4E342E; text-align: right;">$${new Intl.NumberFormat('es-AR').format(total)}</td>
+                        <td style="padding: 10px 0; font-size: 14px; font-weight: 800; color: #4E342E;">TOTAL</td>
+                        <td style="padding: 10px 0; font-size: 18px; font-weight: 900; color: #4E342E; text-align: right;">$${new Intl.NumberFormat('es-AR').format(total)}</td>
                     </tr>
                 </table>
             </div>
         </div>
 
-        <!-- ESPACIO FLEXIBLE (Para empujar el footer) -->
-        <div style="height: 40px;"></div>
-
         <!-- FOOTER / CONDICIONES -->
-        <div style="padding: 30px 40px; background-color: #F5F5F5; border-top: 1px solid #e0e0e0; position: absolute; bottom: 0; left: 0; right: 0;">
+        <div style="padding: 20px 40px; background-color: #F5F5F5; border-top: 1px solid #e0e0e0;">
              <table style="width: 100%; vertical-align: top;">
                 <tr>
                     <td style="width: 50%; padding-right: 20px; vertical-align: top;">
-                        <h4 style="margin: 0 0 8px 0; font-size: 10px; color: #5D4037; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Condiciones Comerciales</h4>
-                        <p style="margin: 0; font-size: 9px; color: #666; line-height: 1.5;">
+                        <h4 style="margin: 0 0 6px 0; font-size: 9px; color: #5D4037; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Condiciones Comerciales</h4>
+                        <p style="margin: 0; font-size: 8px; color: #666; line-height: 1.4;">
                             <strong>Forma de Pago:</strong> 70% de anticipo para congelar precio e iniciar el trabajo, y el 30% restante contra entrega.
                             <br>Los precios son fijos y en Pesos Argentinos una vez abonada la seña. Validez del presupuesto: 10 días hábiles.
                         </p>
                     </td>
                     <td style="width: 50%; padding-left: 20px; vertical-align: top; border-left: 1px solid #ddd;">
-                        <h4 style="margin: 0 0 8px 0; font-size: 10px; color: #5D4037; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Entregas y Materiales</h4>
-                        <p style="margin: 0; font-size: 9px; color: #666; line-height: 1.5;">
+                        <h4 style="margin: 0 0 6px 0; font-size: 9px; color: #5D4037; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Entregas y Materiales</h4>
+                        <p style="margin: 0; font-size: 8px; color: #666; line-height: 1.4;">
                             El tiempo de fabricación depende del producto y su complejidad (estimado 30-45 días).
                             Trabajamos con materiales naturales; las vetas y tonos de la madera pueden variar levemente, garantizando una pieza única.
                         </p>
                     </td>
                 </tr>
              </table>
-             <div style="margin-top: 20px; text-align: center; font-size: 10px; font-weight: 700; color: #8B5E3C; letter-spacing: 2px; text-transform: uppercase;">
+             <div style="margin-top: 15px; text-align: center; font-size: 9px; font-weight: 700; color: #8B5E3C; letter-spacing: 2px; text-transform: uppercase;">
                 Gracias por elegir diseño argentino
              </div>
-             <div style="margin-top: 10px; text-align: center; display: flex; justify-content: center; gap: 10px;">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/f/f6/Bandera_de_la_Provincia_de_C%C3%B3rdoba.svg" style="height: 15px; border: 1px solid #ddd;" alt="CBA" />
-                <img src="https://upload.wikimedia.org/wikipedia/commons/1/1a/Flag_of_Argentina.svg" style="height: 15px; border: 1px solid #ddd;" alt="ARG" />
-                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c0/Bandera_de_la_Provincia_de_Misiones.svg" style="height: 15px; border: 1px solid #ddd;" alt="MIS" />
+             <div style="margin-top: 8px; text-align: center; display: flex; justify-content: center;">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/1/1a/Flag_of_Argentina.svg" style="height: 12px; border: 1px solid #ddd;" alt="ARG" />
              </div>
         </div>
 
       </div>
     `;
 
-    // Configuración para html2pdf - CALIDAD HD MEJORADA
+    // Configuración para html2pdf - CALIDAD HD MEJORADA y FIX MÓVIL
     const opt = {
       margin: 0,
       filename: `Presupuesto_eBe_${idPresupuesto}_${cliente.nombre || 'Cliente'}.pdf`,
-      image: { type: 'jpeg', quality: 1.0 }, // Calidad máxima imagen
+      image: { type: 'jpeg', quality: 0.98 },
       html2canvas: {
-        scale: 4, // ESCALA ALTA PARA EVITAR PIXELADO
+        scale: 2,
         useCORS: true,
         logging: false,
-        letterRendering: true
+        windowWidth: 1200 // <--- ESTA LÍNEA ES LA CLAVE PARA QUE SE VEA BIEN EN CELULAR
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
