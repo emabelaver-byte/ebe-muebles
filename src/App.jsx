@@ -49,7 +49,7 @@ const getDirectDriveUrl = (url) => {
   return url;
 };
 
-// --- TEMA PREMIUM ---
+// --- TEMA PREMIUM (Paleta ajustada) ---
 const THEME = {
   bg: "bg-[#F5F2EB]",
   card: "bg-white border border-[#D6C4B0] shadow-sm",
@@ -57,8 +57,8 @@ const THEME = {
   accent: "text-[#8B5E3C]",
   accentBg: "bg-[#8B5E3C]",
   accentBorder: "border-[#8B5E3C]",
-  primary: "bg-[#5D4037]",
-  primaryText: "text-[#5D4037]",
+  primary: "bg-[#2C241F]", // Marrón muy oscuro (Header)
+  primaryText: "text-[#2C241F]",
   primaryHover: "hover:bg-[#3E2723]",
   secondary: "bg-[#7A8D6F]",
   secondaryText: "text-[#7A8D6F]",
@@ -900,7 +900,16 @@ const App = () => {
   const downloadPDF = () => {
     if (!pdfLibLoaded) return alert("Cargando generador de PDF, intenta en unos segundos...");
 
+    // Crear contenedor temporal para renderizar el PDF
+    // Usamos un ancho fijo de 800px para simular una hoja A4 en pantalla
+    // Esto asegura que el layout sea idéntico en móvil y escritorio
     const element = document.createElement('div');
+    element.style.width = '800px';
+    element.style.position = 'absolute';
+    element.style.left = '-9999px'; // Oculto fuera de la pantalla
+    element.style.top = '0';
+    document.body.appendChild(element);
+
     const total = carrito.reduce((a, b) => a + b.precio, 0);
     const fecha = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const idPresupuesto = 1780 + Math.floor(Math.random() * 1000);
@@ -947,7 +956,7 @@ const App = () => {
         <tr style="${bgStyle} border-bottom: 1px solid #eee;">
           <td style="padding: 10px 15px; vertical-align: top;">
              ${visualHtml}
-             <div style="font-weight: 800; color: #4E342E; font-size: 13px; text-transform: uppercase; margin-bottom: 4px;">${item.mueble.nombre}</div>
+             <div style="font-weight: 800; color: #2C241F; font-size: 13px; text-transform: uppercase; margin-bottom: 4px;">${item.mueble.nombre}</div>
              <div style="font-size: 10px; color: #666; line-height: 1.4; margin-left: 55px;"> <!-- Indentado para esquivar la imagen -->
                ${detalles.join(' • ')}
              </div>
@@ -956,53 +965,50 @@ const App = () => {
         </tr>`;
     }).join('');
 
-    // --- PLANTILLA HTML PRINCIPAL ---
+    // --- PLANTILLA HTML PRINCIPAL (DISEÑO PREMIUM OSCURO) ---
+    // Usamos colores de la paleta: Fondo oscuro #2C241F, texto claro #E0D8C3
     element.innerHTML = `
-      <div style="width: 210mm; min-height: 297mm; padding: 0; margin: 0; background: #fff; font-family: 'Helvetica', sans-serif; position: relative; box-sizing: border-box;">
+      <div style="width: 100%; padding: 0; margin: 0; background: #fff; font-family: 'Helvetica', sans-serif; box-sizing: border-box;">
         
-        <!-- HEADER -->
-        <div style="background-color: #F5F2EB; padding: 30px 40px 20px 40px; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid #5D4037;">
+        <!-- HEADER PREMIUM OSCURO -->
+        <div style="background-color: #2C241F; padding: 40px 40px 30px 40px; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid #8B5E3C;">
             <div style="display: flex; flex-direction: column; justify-content: center;">
-                <img src="${getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}" style="height: 50px; object-fit: contain; margin-bottom: 10px;" />
-                <div style="font-size: 9px; color: #5D4037; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">
+                <!-- Logo en negativo/blanco si es posible, o el normal -->
+                <div style="background: #fff; padding: 5px; border-radius: 4px; display: inline-block; margin-bottom: 10px;">
+                  <img src="${getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}" style="height: 40px; object-fit: contain; display: block;" />
+                </div>
+                <div style="font-size: 9px; color: #E0D8C3; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
                     ${DATOS_CONTACTO.nombre_negocio}<br>
                     ${DATOS_CONTACTO.ubicacion_texto}
                 </div>
             </div>
             <div style="text-align: right;">
-                <h1 style="margin: 0; font-size: 28px; color: #4E342E; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">Presupuesto</h1>
+                <h1 style="margin: 0; font-size: 32px; color: #E0D8C3; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">Presupuesto</h1>
                 <div style="font-size: 14px; color: #8B5E3C; font-weight: 700; margin-top: 5px;"># ${idPresupuesto}</div>
-                <div style="font-size: 11px; color: #666; margin-top: 5px; font-weight: 500;">Fecha: ${fecha}</div>
+                <div style="font-size: 11px; color: #aaa; margin-top: 5px; font-weight: 500;">Fecha: ${fecha}</div>
             </div>
         </div>
 
-        <!-- INFO CLIENTE -->
-        <div style="padding: 20px 40px; background-color: #fff;">
-            <div style="background-color: #FAFAFA; border: 1px solid #eee; border-left: 5px solid #8B5E3C; padding: 12px 15px; border-radius: 4px;">
-                <table style="width: 100%;">
-                    <tr>
-                        <td>
-                            <span style="font-size: 8px; color: #999; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; display: block; margin-bottom: 2px;">Cliente</span>
-                            <div style="font-size: 14px; font-weight: 700; color: #333; text-transform: uppercase;">${cliente.nombre || 'Consumidor Final'}</div>
-                        </td>
-                        <td style="text-align: right;">
-                             <div style="font-size: 11px; color: #555;"><strong>Tel:</strong> ${cliente.telefono || '-'}</div>
-                             <div style="font-size: 11px; color: #555; margin-top: 2px;"><strong>Ubicación:</strong> ${cliente.lugar || '-'}</div>
-                        </td>
-                    </tr>
-                </table>
+        <!-- INFO CLIENTE (Estilo Franja) -->
+        <div style="padding: 30px 40px 10px 40px; background-color: #fff;">
+            <div style="background-color: #2C241F; color: #E0D8C3; padding: 15px 20px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <span style="font-size: 8px; color: #8B5E3C; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; display: block; margin-bottom: 2px;">Cliente</span>
+                    <div style="font-size: 16px; font-weight: 700; text-transform: uppercase;">${cliente.nombre || 'Consumidor Final'}</div>
+                </div>
+                <div style="text-align: right;">
+                     <div style="font-size: 11px;"><strong>Tel:</strong> ${cliente.telefono || '-'}</div>
+                     <div style="font-size: 11px; margin-top: 2px;"><strong>Ubicación:</strong> ${cliente.lugar || '-'}</div>
+                </div>
             </div>
         </div>
 
         <!-- TABLA DE ITEMS -->
-        <div style="padding: 0 40px; margin-bottom: 10px;">
+        <div style="padding: 10px 40px; margin-bottom: 10px;">
+            <div style="background-color: #8B5E3C; color: #fff; padding: 8px 15px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border-radius: 4px 4px 0 0;">
+                DESCRIPCIÓN DEL PRODUCTO <span style="float: right;">SUBTOTAL</span>
+            </div>
             <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="background-color: #5D4037; color: white;">
-                        <th style="padding: 10px 15px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Descripción del Producto</th>
-                        <th style="padding: 10px 15px; text-align: right; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; width: 100px;">Subtotal</th>
-                    </tr>
-                </thead>
                 <tbody>
                     ${itemsHtml}
                 </tbody>
@@ -1022,26 +1028,26 @@ const App = () => {
                         <td style="padding: 6px 0; font-size: 11px; color: #666; text-align: right; border-bottom: 1px solid #eee;">A Cotizar</td>
                     </tr>
                     <tr>
-                        <td style="padding: 10px 0; font-size: 14px; font-weight: 800; color: #4E342E;">TOTAL</td>
-                        <td style="padding: 10px 0; font-size: 18px; font-weight: 900; color: #4E342E; text-align: right;">$${new Intl.NumberFormat('es-AR').format(total)}</td>
+                        <td style="padding: 10px 0; font-size: 14px; font-weight: 800; color: #2C241F;">TOTAL</td>
+                        <td style="padding: 10px 0; font-size: 20px; font-weight: 900; color: #2C241F; text-align: right;">$${new Intl.NumberFormat('es-AR').format(total)}</td>
                     </tr>
                 </table>
             </div>
         </div>
 
         <!-- FOOTER / CONDICIONES -->
-        <div style="padding: 20px 40px; background-color: #F5F5F5; border-top: 1px solid #e0e0e0;">
+        <div style="padding: 20px 40px; background-color: #F9F9F9; border-top: 2px solid #2C241F;">
              <table style="width: 100%; vertical-align: top;">
                 <tr>
                     <td style="width: 50%; padding-right: 20px; vertical-align: top;">
-                        <h4 style="margin: 0 0 6px 0; font-size: 9px; color: #5D4037; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Condiciones Comerciales</h4>
+                        <h4 style="margin: 0 0 6px 0; font-size: 9px; color: #2C241F; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Condiciones Comerciales</h4>
                         <p style="margin: 0; font-size: 8px; color: #666; line-height: 1.4;">
                             <strong>Forma de Pago:</strong> 70% de anticipo para congelar precio e iniciar el trabajo, y el 30% restante contra entrega.
                             <br>Los precios son fijos y en Pesos Argentinos una vez abonada la seña. Validez del presupuesto: 10 días hábiles.
                         </p>
                     </td>
                     <td style="width: 50%; padding-left: 20px; vertical-align: top; border-left: 1px solid #ddd;">
-                        <h4 style="margin: 0 0 6px 0; font-size: 9px; color: #5D4037; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Entregas y Materiales</h4>
+                        <h4 style="margin: 0 0 6px 0; font-size: 9px; color: #2C241F; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Entregas y Materiales</h4>
                         <p style="margin: 0; font-size: 8px; color: #666; line-height: 1.4;">
                             El tiempo de fabricación depende del producto y su complejidad (estimado 30-45 días).
                             Trabajamos con materiales naturales; las vetas y tonos de la madera pueden variar levemente, garantizando una pieza única.
@@ -1060,22 +1066,28 @@ const App = () => {
       </div>
     `;
 
-    // Configuración para html2pdf - CALIDAD HD MEJORADA y FIX MÓVIL
+    // Configuración para html2pdf - FIX DEFINITIVO MÓVIL
     const opt = {
       margin: 0,
       filename: `Presupuesto_eBe_${idPresupuesto}_${cliente.nombre || 'Cliente'}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: {
-        scale: 2,
+        scale: 2, // Buena calidad
         useCORS: true,
         logging: false,
-        windowWidth: 1200 // <--- ESTA LÍNEA ES LA CLAVE PARA QUE SE VEA BIEN EN CELULAR
+        windowWidth: 800 // Forzamos el ancho de renderizado a 800px (ancho de nuestro contenedor)
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    // Ejecutar descarga
-    window.html2pdf().set(opt).from(element).save();
+    // Ejecutar descarga y limpiar DOM
+    window.html2pdf().set(opt).from(element).save().then(() => {
+      document.body.removeChild(element);
+    }).catch(err => {
+      console.error(err);
+      document.body.removeChild(element);
+      alert("Error al generar PDF. Intente nuevamente.");
+    });
   };
 
   const enviarWhatsapp = useCallback(async () => {
