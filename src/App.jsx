@@ -393,7 +393,6 @@ const App = () => {
   const [editMaterialId, setEditMaterialId] = useState(null);
   const [editMaterialData, setEditMaterialData] = useState({});
 
-
   // Flow State
   const [catSeleccionada, setCatSeleccionada] = useState(null);
   const [muebleSeleccionado, setMuebleSeleccionado] = useState(null);
@@ -447,6 +446,20 @@ const App = () => {
     script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
     script.onload = () => setPdfLibLoaded(true);
     document.body.appendChild(script);
+  }, []);
+
+  // --- SEO PARA ARGENTINA ---
+  useEffect(() => {
+    document.title = "eBe Muebles | Carpintería de Autor en Alta Gracia, Córdoba";
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute("content", "eBe Muebles: Diseño y fabricación de muebles a medida en Alta Gracia, Córdoba. Mesas, sillas, vestidores y muebles industriales. Envíos a todo el país.");
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = "description";
+      meta.content = "eBe Muebles: Diseño y fabricación de muebles a medida en Alta Gracia, Córdoba. Mesas, sillas, vestidores y muebles industriales. Envíos a todo el país.";
+      document.head.appendChild(meta);
+    }
   }, []);
 
   const getHeaderTitle = useCallback(() => {
@@ -612,7 +625,7 @@ const App = () => {
 
   const uploadDefaultMaterials = async () => {
     if (!isAdmin) return;
-    if (!confirm("Esto cargará todas las maderas por defecto a la base de datos. ¿Deseas continuar?")) return;
+    if (!confirm("Esto cargará todas las maderas por defecto a la base de datos de la web. ¿Deseas continuar?")) return;
 
     try {
       const batch = writeBatch(db);
@@ -926,13 +939,13 @@ const App = () => {
     }).join('');
 
     element.innerHTML = `
-      <div style="width: 210mm; min-height: 297mm; padding: 15mm; box-sizing: border-box; font-family: 'Helvetica', sans-serif; color: #333; background: white; position: relative;">
+      <div style="width: 210mm; min-height: 297mm; padding: 10mm 15mm; box-sizing: border-box; font-family: 'Helvetica', sans-serif; color: #333; background: white; display: flex; flex-direction: column;">
         
         <!-- MARCA DE AGUA -->
         <div style="position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 120px; color: rgba(93, 64, 55, 0.04); font-weight: 900; z-index: 0; white-space: nowrap; pointer-events: none;">EBE MUEBLES</div>
 
         <!-- CABECERA -->
-        <div style="display:flex; justify-content:space-between; align-items: flex-start; border-bottom: 4px solid #5D4037; padding-bottom: 20px; margin-bottom: 30px;">
+        <div style="display:flex; justify-content:space-between; align-items: flex-start; border-bottom: 4px solid #5D4037; padding-bottom: 15px; margin-bottom: 25px;">
            <div style="display: flex; flex-direction: column;">
                <img src="${getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}" style="height:70px; object-fit: contain; margin-bottom: 10px;" />
                <div style="font-size: 11px; color: #555; line-height: 1.4;">
@@ -963,7 +976,7 @@ const App = () => {
         </div>
 
         <!-- TABLA -->
-        <table style="width:100%; border-collapse: collapse; margin-bottom:30px;">
+        <table style="width:100%; border-collapse: collapse; margin-bottom:30px; flex-grow: 1;">
            <thead>
               <tr style="background:#5D4037; color:white;">
                   <th style="padding:12px 10px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing: 1px; border-top-left-radius: 4px;">Producto</th>
@@ -975,7 +988,7 @@ const App = () => {
         </table>
 
         <!-- TOTALES -->
-        <div style="display: flex; justify-content: flex-end; margin-bottom: 40px;">
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 40px; margin-top: auto;">
            <div style="width: 280px;">
               <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: #666; padding-bottom: 5px; border-bottom: 1px dashed #ddd;">
                  <span>Envío</span>
@@ -993,7 +1006,7 @@ const App = () => {
         </div>
 
         <!-- PIE DE PAGINA (LEGALES) -->
-        <div style="border-top: 1px solid #ddd; padding-top: 15px; font-size: 10px; color: #666; line-height: 1.5; margin-top: auto;">
+        <div style="border-top: 1px solid #ddd; padding-top: 15px; font-size: 10px; color: #666; line-height: 1.5;">
            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 30px;">
                <div>
                   <strong style="color: #5D4037; display: block; margin-bottom: 4px; text-transform: uppercase;">Condiciones Comerciales</strong>
@@ -1014,7 +1027,7 @@ const App = () => {
       margin: 0,
       filename: `Presupuesto_eBe_${cliente.nombre || 'Cliente'}.pdf`,
       image: { type: 'jpeg', quality: 1 },
-      html2canvas: { scale: 4, useCORS: true, logging: false, letterRendering: true }, // Scale 4 para máxima calidad
+      html2canvas: { scale: 3, useCORS: true, logging: false, letterRendering: true },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
@@ -1260,10 +1273,10 @@ const App = () => {
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
               <h3 className="font-bold uppercase text-sm text-[#8B5E3C] mb-4">Gestión de Galería</h3>
-              <div className="flex gap-2">
+              <div className="flex flex-col md:flex-row gap-2">
                 <input value={newImage.url} onChange={e => setNewImage({ ...newImage, url: e.target.value })} placeholder="URL Imagen (Ej: Google Drive o Directa)" className="flex-1 border p-3 rounded-lg text-sm font-medium" />
                 <input value={newImage.alt} onChange={e => setNewImage({ ...newImage, alt: e.target.value })} placeholder="Título descriptivo" className="flex-1 border p-3 rounded-lg text-sm font-medium" />
-                <button onClick={addGalleryImage} className="bg-[#5D4037] text-white px-6 rounded-lg hover:bg-[#3E2723] transition-colors font-bold"><Plus /></button>
+                <button onClick={addGalleryImage} className="bg-[#5D4037] text-white px-6 py-3 rounded-lg hover:bg-[#3E2723] transition-colors font-bold"><Plus /></button>
               </div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1863,7 +1876,7 @@ const App = () => {
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-16">
               {galeria.map(img => (
-                <div key={img.id} className="relative group aspect-square rounded-2xl overflow-hidden cursor-pointer group relative shadow-sm hover:shadow-md transition-all border border-[#E0D8C3]">
+                <div key={img.id} onClick={() => setSelectedImage(img)} className="aspect-square rounded-2xl overflow-hidden cursor-pointer group relative shadow-sm hover:shadow-md transition-all border border-[#E0D8C3]">
                   <img src={getDirectDriveUrl(img.src)} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
                   <div className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-100 transition-opacity">
                     <span className="text-white text-sm md:text-lg font-bold uppercase tracking-widest mb-4 px-2 text-center drop-shadow-md font-sans">{img.alt}</span>
