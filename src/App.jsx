@@ -934,11 +934,21 @@ const App = () => {
       // Alternar color de fondo para filas
       const bgStyle = index % 2 === 0 ? 'background-color: #fff;' : 'background-color: #f9f9f9;';
 
+      // 2. Obtener visual del material para el PDF
+      const visual = getMaterialVisual(item.config, maderas, melaminas);
+      let visualHtml = '';
+      if (visual.type === 'img' && visual.value) {
+        visualHtml = `<img src="${getDirectDriveUrl(visual.value)}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; margin-right: 15px; float: left;">`;
+      } else if (visual.type === 'css') {
+        visualHtml = `<div style="width: 40px; height: 40px; background: ${visual.value}; border-radius: 4px; border: 1px solid #ddd; margin-right: 15px; float: left;"></div>`;
+      }
+
       return `
         <tr style="${bgStyle} border-bottom: 1px solid #eee;">
           <td style="padding: 12px 15px; vertical-align: top;">
+             ${visualHtml}
              <div style="font-weight: 800; color: #4E342E; font-size: 14px; text-transform: uppercase; margin-bottom: 4px;">${item.mueble.nombre}</div>
-             <div style="font-size: 11px; color: #666; line-height: 1.5;">
+             <div style="font-size: 11px; color: #666; line-height: 1.5; margin-left: 55px;"> <!-- Indentado para esquivar la imagen -->
                ${detalles.join(' • ')}
              </div>
           </td>
@@ -1029,21 +1039,26 @@ const App = () => {
                     <td style="width: 50%; padding-right: 20px; vertical-align: top;">
                         <h4 style="margin: 0 0 8px 0; font-size: 10px; color: #5D4037; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Condiciones Comerciales</h4>
                         <p style="margin: 0; font-size: 9px; color: #666; line-height: 1.5;">
-                            Este presupuesto tiene una validez de 10 días hábiles. Los precios están expresados en Pesos Argentinos. 
-                            La seña congela el precio de los materiales. El saldo restante se actualiza al momento de la entrega si hubiere variaciones significativas.
+                            <strong>Forma de Pago:</strong> 70% de anticipo para congelar precio e iniciar el trabajo, y el 30% restante contra entrega.
+                            <br>Los precios son fijos y en Pesos Argentinos una vez abonada la seña. Validez del presupuesto: 10 días hábiles.
                         </p>
                     </td>
                     <td style="width: 50%; padding-left: 20px; vertical-align: top; border-left: 1px solid #ddd;">
                         <h4 style="margin: 0 0 8px 0; font-size: 10px; color: #5D4037; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Entregas y Materiales</h4>
                         <p style="margin: 0; font-size: 9px; color: #666; line-height: 1.5;">
-                            El tiempo de fabricación estimado es de 20 a 35 días hábiles a partir de la seña.
-                            Trabajamos con materiales naturales; las vetas y tonos de la madera pueden variar levemente respecto a las muestras, garantizando una pieza única.
+                            El tiempo de fabricación depende del producto y su complejidad (estimado 30-45 días).
+                            Trabajamos con materiales naturales; las vetas y tonos de la madera pueden variar levemente, garantizando una pieza única.
                         </p>
                     </td>
                 </tr>
              </table>
              <div style="margin-top: 20px; text-align: center; font-size: 10px; font-weight: 700; color: #8B5E3C; letter-spacing: 2px; text-transform: uppercase;">
                 Gracias por elegir diseño argentino
+             </div>
+             <div style="margin-top: 10px; text-align: center; display: flex; justify-content: center; gap: 10px;">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/f/f6/Bandera_de_la_Provincia_de_C%C3%B3rdoba.svg" style="height: 15px; border: 1px solid #ddd;" alt="CBA" />
+                <img src="https://upload.wikimedia.org/wikipedia/commons/1/1a/Flag_of_Argentina.svg" style="height: 15px; border: 1px solid #ddd;" alt="ARG" />
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c0/Bandera_de_la_Provincia_de_Misiones.svg" style="height: 15px; border: 1px solid #ddd;" alt="MIS" />
              </div>
         </div>
 
