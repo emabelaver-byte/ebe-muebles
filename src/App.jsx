@@ -20,7 +20,7 @@ import {
 // ==============================================================================
 
 // GEMINI API CONFIG
-const apiKey = "AIzaSyABrPRcFOGlwh1oX8BhTljlfaJDpFuKFjw";
+const apiKey = ""; // Se inyecta en tiempo de ejecución
 
 const userFirebaseConfig = {
   apiKey: "AIzaSyCObM7lu1VN6kvPx9Ifgd4eo4N3bgm-Oak",
@@ -51,7 +51,7 @@ const getDirectDriveUrl = (url) => {
 
 // --- TEMA PREMIUM ---
 const THEME = {
-  bg: "bg-[#EAE2D6]",
+  bg: "bg-[#F5F2EB]",
   card: "bg-white border border-[#D6C4B0] shadow-sm",
   cardHover: "hover:border-[#5D4037] hover:shadow-lg transition-all duration-300 ease-out",
   accent: "text-[#8B5E3C]",
@@ -356,6 +356,15 @@ const getMaterialVisual = (config, maderas, melaminas) => {
   return { type: 'img', value: madera ? madera.src : '' };
 };
 
+// Helper para obtener label de patas
+const getPatasLabel = (tipo, modelo) => {
+  if (!tipo || tipo === 'sin_patas') return '';
+  const group = OPCIONES_PATAS[tipo];
+  if (!group) return '';
+  const leg = group.find(p => p.id === modelo);
+  return leg ? `${leg.nombre} (${tipo === 'metal' ? 'Metal' : 'Madera'})` : '';
+};
+
 // ==============================================================================
 //  3. APP PRINCIPAL
 // ==============================================================================
@@ -494,7 +503,7 @@ const App = () => {
     return onAuthStateChanged(auth, setUser);
   }, []);
 
-  // ANALYTICS
+  // ANALYTICS & VISIT COUNTER
   useEffect(() => {
     if (!user) return;
     const trackVisit = async () => {
@@ -865,17 +874,18 @@ const App = () => {
     `;
 
     try {
-      // Usamos el modelo gemini-1.5-flash que es el estándar actual para API Keys gratuitas
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: contextText + "\n\nUsuario: " + aiQuery }] }] })
       });
       const data = await response.json();
-      if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+      if (data.error) {
+        setAiResponse(`Error de API: ${data.error.message || 'Clave inválida o sin permisos'}`);
+      } else if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
         setAiResponse(data.candidates[0].content.parts[0].text);
       } else {
-        setAiResponse("Lo siento, hubo un problema al conectar con el asistente. Por favor intenta de nuevo.");
+        setAiResponse("Lo siento, no pude procesar tu solicitud. Intenta de nuevo.");
       }
     } catch (error) {
       console.error("Error AI:", error);
@@ -886,148 +896,171 @@ const App = () => {
     }
   }, [aiQuery, maderas, melaminas]);
 
-  // --- FUNCIÓN DE DESCARGA PDF AUTOMÁTICA ---
+  // --- FUNCIÓN DE DESCARGA PDF AUTOMÁTICA RECONSTRUIDA ---
   const downloadPDF = () => {
     if (!pdfLibLoaded) return alert("Cargando generador de PDF, intenta en unos segundos...");
 
     const element = document.createElement('div');
-    // HTML del PDF oculto - DISEÑO FACTURA PROFESIONAL A4 EXACTO
     const total = carrito.reduce((a, b) => a + b.precio, 0);
     const fecha = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const idPresupuesto = Math.floor(1000 + Math.random() * 9000);
+    const idPresupuesto = 1780 + Math.floor(Math.random() * 1000);
 
-    const itemsHtml = carrito.map(item => {
-      // Buscar imagen del material
-      const visual = getMaterialVisual(item.config, maderas, melaminas);
-      let visualHtml = '';
-      if (visual.type === 'img' && visual.value) {
-        // Imagen real de la textura
-        visualHtml = `<img src="${getDirectDriveUrl(visual.value)}" style="width:40px;height:40px;border-radius:4px;object-fit:cover;border:1px solid #ddd;display:block;margin-right:15px;">`;
-      } else if (visual.type === 'css') {
-        visualHtml = `<span style="display:block;width:40px;height:40px;border-radius:4px;background:${visual.value};margin-right:15px;border:1px solid #ddd;"></span>`;
+    // --- CONSTRUCCIÓN DE ITEMS DE LA FACTURA ---
+    const itemsHtml = carrito.map((item, index) => {
+      // 1. Detalles Técnicos
+      let detalles = [];
+      detalles.push(`<strong>Medidas:</strong> ${item.config.ancho}cm x ${item.config.largo}cm${item.config.profundidad ? ` x ${item.config.profundidad}cm` : ''}`);
+      detalles.push(`<strong>Material:</strong> ${item.config.materialNombre}`);
+
+      if (item.config.tipoConstruccion === 'maciza' || item.config.tipoConstruccion.includes('chapa')) {
+        detalles.push(`<strong>Uso:</strong> ${item.config.uso === 'exterior' ? 'Exterior' : 'Interior'}`);
       }
 
-      let acabadoLabel = '';
-      if (item.config.acabado) {
-        if (item.config.acabado === 'natural') acabadoLabel = 'Natural';
-        else if (item.config.acabado === 'cetol') acabadoLabel = 'Impregnante (Cetol)';
-        else if (item.config.acabado === 'laca') acabadoLabel = 'Laca Poliuretánica';
-        else acabadoLabel = item.config.acabado;
+      if (item.config.acabado && item.config.acabado !== 'natural') {
+        const acabadosMap = { cetol: 'Impregnante Protector', laca: 'Laca Poliuretánica', mate: 'Mate', satinado: 'Satinado', brillante: 'Brillante' };
+        detalles.push(`<strong>Terminación:</strong> ${acabadosMap[item.config.acabado] || item.config.acabado}`);
       }
+
+      if (item.config.cantCajones > 0) detalles.push(`<strong>Cajones:</strong> ${item.config.cantCajones} unid.`);
+      if (item.config.cantPuertas > 0) detalles.push(`<strong>Puertas:</strong> ${item.config.cantPuertas} unid.`);
 
       const patasLabel = getPatasLabel(item.config.tipoPatas, item.config.modeloPatas);
+      if (patasLabel) detalles.push(`<strong>Base:</strong> ${patasLabel}`);
+
+      if (item.config.marco) detalles.push(`<strong>Adicional:</strong> Con Marco`);
+
+      const precioTexto = item.precio > 0 ? `$${new Intl.NumberFormat('es-AR').format(item.precio)}` : 'A Cotizar';
+
+      // Alternar color de fondo para filas
+      const bgStyle = index % 2 === 0 ? 'background-color: #fff;' : 'background-color: #f9f9f9;';
 
       return `
-        <tr style="border-bottom: 1px solid #eee;">
-          <td style="padding: 15px 10px; vertical-align: middle;">
-             <div style="display:flex; align-items: center;">
-                ${visualHtml}
-                <div>
-                    <strong style="font-size: 13px; display:block; margin-bottom: 2px; text-transform: uppercase;">${item.mueble.nombre}</strong>
-                    <span style="font-size:11px;color:#666">${item.config.materialNombre}</span>
-                </div>
+        <tr style="${bgStyle} border-bottom: 1px solid #eee;">
+          <td style="padding: 12px 15px; vertical-align: top;">
+             <div style="font-weight: 800; color: #4E342E; font-size: 14px; text-transform: uppercase; margin-bottom: 4px;">${item.mueble.nombre}</div>
+             <div style="font-size: 11px; color: #666; line-height: 1.5;">
+               ${detalles.join(' • ')}
              </div>
           </td>
-          <td style="padding: 15px 10px; vertical-align: middle; color: #444; font-size: 12px;">
-             ${item.config.ancho}x${item.config.largo}cm 
-             ${item.config.cantCajones > 0 ? `<br/>• ${item.config.cantCajones} Cajones` : ''} 
-             ${acabadoLabel ? `<br/>• Terminación: ${acabadoLabel}` : ''}
-             ${patasLabel ? `<br/>• Patas: ${patasLabel}` : ''}
-          </td>
-          <td style="padding: 15px 10px; text-align:right; vertical-align: middle; font-weight: bold; font-size: 13px;">$${new Intl.NumberFormat('es-AR').format(item.precio)}</td>
+          <td style="padding: 12px 15px; text-align:right; vertical-align: top; font-weight: 700; font-size: 14px; color: #333;">${precioTexto}</td>
         </tr>`;
     }).join('');
 
+    // --- PLANTILLA HTML PRINCIPAL ---
     element.innerHTML = `
-      <div style="width: 210mm; min-height: 297mm; padding: 10mm 15mm; box-sizing: border-box; font-family: 'Helvetica', sans-serif; color: #333; background: white; display: flex; flex-direction: column;">
+      <div style="width: 210mm; min-height: 297mm; padding: 0; margin: 0; background: #fff; font-family: 'Helvetica', sans-serif; position: relative; box-sizing: border-box;">
         
-        <!-- MARCA DE AGUA -->
-        <div style="position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 120px; color: rgba(93, 64, 55, 0.04); font-weight: 900; z-index: 0; white-space: nowrap; pointer-events: none;">EBE MUEBLES</div>
-
-        <!-- CABECERA -->
-        <div style="display:flex; justify-content:space-between; align-items: flex-start; border-bottom: 4px solid #5D4037; padding-bottom: 15px; margin-bottom: 25px;">
-           <div style="display: flex; flex-direction: column;">
-               <img src="${getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}" style="height:70px; object-fit: contain; margin-bottom: 10px;" />
-               <div style="font-size: 11px; color: #555; line-height: 1.4;">
-                  <strong>${DATOS_CONTACTO.nombre_negocio}</strong><br/>
-                  ${DATOS_CONTACTO.ubicacion_texto}<br/>
-                  Tel: +${DATOS_CONTACTO.telefono_whatsapp}<br/>
-                  Instagram: @ebe.muebles
-               </div>
-           </div>
-           <div style="text-align:right;">
-             <h1 style="margin:0; font-size:32px; color:#5D4037; text-transform:uppercase; font-weight: 800; letter-spacing: -1px;">Presupuesto</h1>
-             <p style="margin:5px 0; color:#888; font-size: 14px; font-weight: 500;"># ${idPresupuesto}</p>
-             <p style="margin:0; color:#333; font-size: 14px; font-weight: bold;">Fecha: ${fecha}</p>
-           </div>
+        <!-- HEADER -->
+        <div style="background-color: #F5F2EB; padding: 40px 40px 30px 40px; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid #5D4037;">
+            <div style="display: flex; flex-direction: column; justify-content: center;">
+                <img src="${getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}" style="height: 60px; object-fit: contain; margin-bottom: 15px;" />
+                <div style="font-size: 10px; color: #5D4037; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">
+                    ${DATOS_CONTACTO.nombre_negocio}<br>
+                    ${DATOS_CONTACTO.ubicacion_texto}
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <h1 style="margin: 0; font-size: 32px; color: #4E342E; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">Presupuesto</h1>
+                <div style="font-size: 16px; color: #8B5E3C; font-weight: 700; margin-top: 5px;"># ${idPresupuesto}</div>
+                <div style="font-size: 12px; color: #666; margin-top: 5px; font-weight: 500;">Fecha: ${fecha}</div>
+            </div>
         </div>
-        
+
         <!-- INFO CLIENTE -->
-        <div style="margin-bottom: 30px; background: #F9F7F2; padding: 15px; border-radius: 6px; border-left: 5px solid #8B5E3C; display: flex; justify-content: space-between;">
-           <div>
-              <span style="font-size: 10px; font-weight: 700; color: #8B5E3C; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px;">Cliente</span>
-              <h2 style="margin: 0; font-size: 16px; color: #222;">${cliente.nombre || 'Consumidor Final'}</h2>
-           </div>
-           <div style="text-align: right;">
-              <span style="font-size: 10px; font-weight: 700; color: #8B5E3C; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px;">Contacto</span>
-              <p style="margin: 0; font-size: 12px; color: #444;">${cliente.telefono || '-'}</p>
-              <p style="margin: 0; font-size: 12px; color: #444;">${cliente.lugar || '-'}</p>
-           </div>
+        <div style="padding: 30px 40px; background-color: #fff;">
+            <div style="background-color: #FAFAFA; border: 1px solid #eee; border-left: 5px solid #8B5E3C; padding: 15px 20px; border-radius: 4px;">
+                <table style="width: 100%;">
+                    <tr>
+                        <td>
+                            <span style="font-size: 9px; color: #999; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; display: block; margin-bottom: 2px;">Cliente</span>
+                            <div style="font-size: 16px; font-weight: 700; color: #333; text-transform: uppercase;">${cliente.nombre || 'Consumidor Final'}</div>
+                        </td>
+                        <td style="text-align: right;">
+                             <div style="font-size: 12px; color: #555;"><strong>Tel:</strong> ${cliente.telefono || '-'}</div>
+                             <div style="font-size: 12px; color: #555; margin-top: 2px;"><strong>Ubicación:</strong> ${cliente.lugar || '-'}</div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
         </div>
 
-        <!-- TABLA -->
-        <table style="width:100%; border-collapse: collapse; margin-bottom:30px; flex-grow: 1;">
-           <thead>
-              <tr style="background:#5D4037; color:white;">
-                  <th style="padding:12px 10px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing: 1px; border-top-left-radius: 4px;">Producto</th>
-                  <th style="padding:12px 10px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing: 1px;">Detalle</th>
-                  <th style="padding:12px 10px; text-align:right; font-size:11px; text-transform:uppercase; letter-spacing: 1px; border-top-right-radius: 4px;">Importe</th>
-              </tr>
-           </thead>
-           <tbody>${itemsHtml}</tbody>
-        </table>
+        <!-- TABLA DE ITEMS -->
+        <div style="padding: 0 40px; margin-bottom: 20px;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background-color: #5D4037; color: white;">
+                        <th style="padding: 12px 15px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Descripción del Producto</th>
+                        <th style="padding: 12px 15px; text-align: right; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; width: 120px;">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemsHtml}
+                </tbody>
+            </table>
+        </div>
 
         <!-- TOTALES -->
-        <div style="display: flex; justify-content: flex-end; margin-bottom: 40px; margin-top: auto;">
-           <div style="width: 280px;">
-              <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: #666; padding-bottom: 5px; border-bottom: 1px dashed #ddd;">
-                 <span>Envío</span>
-                 <span>A Cotizar</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: #666; padding-bottom: 5px; border-bottom: 1px dashed #ddd;">
-                 <span>Instalación</span>
-                 <span>A Cotizar</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; padding-top: 10px; border-top: 3px solid #5D4037; font-weight: 900; font-size: 18px; color: #5D4037; align-items: center;">
-                 <span>TOTAL ESTIMADO</span>
-                 <span>$${new Intl.NumberFormat('es-AR').format(total)}</span>
-              </div>
-           </div>
+        <div style="padding: 0 40px; display: flex; justify-content: flex-end;">
+            <div style="width: 250px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 8px 0; font-size: 12px; color: #666; border-bottom: 1px solid #eee;">Envío</td>
+                        <td style="padding: 8px 0; font-size: 12px; color: #666; text-align: right; border-bottom: 1px solid #eee;">A Cotizar</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; font-size: 12px; color: #666; border-bottom: 1px solid #eee;">Instalación</td>
+                        <td style="padding: 8px 0; font-size: 12px; color: #666; text-align: right; border-bottom: 1px solid #eee;">A Cotizar</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 15px 0; font-size: 16px; font-weight: 800; color: #4E342E;">TOTAL</td>
+                        <td style="padding: 15px 0; font-size: 20px; font-weight: 900; color: #4E342E; text-align: right;">$${new Intl.NumberFormat('es-AR').format(total)}</td>
+                    </tr>
+                </table>
+            </div>
         </div>
 
-        <!-- PIE DE PAGINA (LEGALES) -->
-        <div style="border-top: 1px solid #ddd; padding-top: 15px; font-size: 10px; color: #666; line-height: 1.5;">
-           <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 30px;">
-               <div>
-                  <strong style="color: #5D4037; display: block; margin-bottom: 4px; text-transform: uppercase;">Condiciones Comerciales</strong>
-                  Este presupuesto tiene una validez de 10 días hábiles. Los precios están sujetos a verificación final vía WhatsApp. La demora de fabricación se estipula a partir de la seña.
-               </div>
-               <div>
-                  <strong style="color: #5D4037; display: block; margin-bottom: 4px; text-transform: uppercase;">Entregas y Materiales</strong>
-                  El envío corre por cuenta y responsabilidad del cliente. Trabajamos con materiales 100% naturales y procesos artesanales, garantizando piezas únicas.
-               </div>
-           </div>
-           <div style="text-align:center; margin-top:30px; font-weight:800; color:#5D4037; font-size:10px; letter-spacing:2px; text-transform: uppercase;">Gracias por elegir diseño argentino</div>
+        <!-- ESPACIO FLEXIBLE (Para empujar el footer) -->
+        <div style="height: 40px;"></div>
+
+        <!-- FOOTER / CONDICIONES -->
+        <div style="padding: 30px 40px; background-color: #F5F5F5; border-top: 1px solid #e0e0e0; position: absolute; bottom: 0; left: 0; right: 0;">
+             <table style="width: 100%; vertical-align: top;">
+                <tr>
+                    <td style="width: 50%; padding-right: 20px; vertical-align: top;">
+                        <h4 style="margin: 0 0 8px 0; font-size: 10px; color: #5D4037; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Condiciones Comerciales</h4>
+                        <p style="margin: 0; font-size: 9px; color: #666; line-height: 1.5;">
+                            Este presupuesto tiene una validez de 10 días hábiles. Los precios están expresados en Pesos Argentinos. 
+                            La seña congela el precio de los materiales. El saldo restante se actualiza al momento de la entrega si hubiere variaciones significativas.
+                        </p>
+                    </td>
+                    <td style="width: 50%; padding-left: 20px; vertical-align: top; border-left: 1px solid #ddd;">
+                        <h4 style="margin: 0 0 8px 0; font-size: 10px; color: #5D4037; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Entregas y Materiales</h4>
+                        <p style="margin: 0; font-size: 9px; color: #666; line-height: 1.5;">
+                            El tiempo de fabricación estimado es de 20 a 35 días hábiles a partir de la seña.
+                            Trabajamos con materiales naturales; las vetas y tonos de la madera pueden variar levemente respecto a las muestras, garantizando una pieza única.
+                        </p>
+                    </td>
+                </tr>
+             </table>
+             <div style="margin-top: 20px; text-align: center; font-size: 10px; font-weight: 700; color: #8B5E3C; letter-spacing: 2px; text-transform: uppercase;">
+                Gracias por elegir diseño argentino
+             </div>
         </div>
+
       </div>
     `;
 
-    // Configuración para html2pdf - CALIDAD HD A4
+    // Configuración para html2pdf - CALIDAD HD MEJORADA
     const opt = {
       margin: 0,
-      filename: `Presupuesto_eBe_${cliente.nombre || 'Cliente'}.pdf`,
-      image: { type: 'jpeg', quality: 1 },
-      html2canvas: { scale: 3, useCORS: true, logging: false, letterRendering: true },
+      filename: `Presupuesto_eBe_${idPresupuesto}_${cliente.nombre || 'Cliente'}.pdf`,
+      image: { type: 'jpeg', quality: 1.0 }, // Calidad máxima imagen
+      html2canvas: {
+        scale: 4, // ESCALA ALTA PARA EVITAR PIXELADO
+        useCORS: true,
+        logging: false,
+        letterRendering: true
+      },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
@@ -1081,9 +1114,9 @@ const App = () => {
 
   // --- RENDER ---
   if (isAdmin) return (
-    <div className={`min-h-screen bg-[#F5F5F5] text-[#333] font-sans flex flex-col md:flex-row`}>
+    <div className={`min-h-screen bg-[#F5F2EB] text-[#2C241F] font-sans flex flex-col md:flex-row`}>
       {/* Sidebar Admin (Responsive) */}
-      <div className="w-full md:w-64 bg-white border-b md:border-r border-[#E0E0E0] flex flex-row md:flex-col fixed md:h-full z-20 transition-all items-center md:items-stretch justify-between md:justify-start px-4 md:px-0">
+      <div className="w-full md:w-64 bg-white border-b md:border-r border-[#D6C4B0] flex flex-row md:flex-col fixed md:h-full z-20 transition-all items-center md:items-stretch justify-between md:justify-start px-4 md:px-0">
         <div className="p-4 md:p-6 flex items-center justify-center md:justify-start gap-3">
           <Settings className="text-[#5D4037] animate-spin-slow" />
           <span className="font-bold text-[#5D4037] text-lg hidden md:block uppercase tracking-wider">Admin</span>
@@ -1104,7 +1137,7 @@ const App = () => {
             </button>
           ))}
         </div>
-        <div className="p-4 border-t border-[#E0E0E0] hidden md:block mt-auto">
+        <div className="p-4 border-t border-[#D6C4B0] hidden md:block mt-auto">
           <button onClick={() => { signOut(auth); setIsAdmin(false); signInAnonymously(auth); }} className="w-full text-red-500 flex items-center justify-center md:justify-start gap-2 hover:bg-red-50 p-3 rounded-xl transition-colors font-bold text-sm"><LogOut size={20} /> <span className="hidden md:block">Salir</span></button>
         </div>
       </div>
@@ -1112,10 +1145,10 @@ const App = () => {
 
         {adminTab === 'dashboard' && (
           <div className="space-y-6">
-            <div className="text-3xl font-bold text-[#333]">Panel de Control</div>
+            <div className="text-3xl font-bold text-[#2C241F]">Panel de Control</div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
-                <h4 className="text-xs font-bold text-[#999] uppercase tracking-widest mb-2">Visitas Totales</h4>
+              <div className="bg-white p-6 rounded-xl border border-[#D6C4B0] shadow-sm">
+                <h4 className="text-xs font-bold text-[#6B5A4E] uppercase tracking-widest mb-2">Visitas Totales</h4>
                 <div className="text-4xl font-black text-[#5D4037]">{visitStats.mobile + visitStats.desktop}</div>
                 <div className="mt-4 text-xs font-medium text-gray-500 flex gap-4">
                   <span className="flex items-center gap-1"><Smartphone size={14} /> {visitStats.mobile} Móvil</span>
@@ -1123,7 +1156,7 @@ const App = () => {
                 </div>
               </div>
 
-              <a href="https://analytics.google.com/" target="_blank" rel="noreferrer" className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-colors group">
+              <a href="https://analytics.google.com/" target="_blank" rel="noreferrer" className="bg-white p-6 rounded-xl border border-[#D6C4B0] shadow-sm flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-colors group">
                 <BarChart3 size={32} className="text-[#F4B400] mb-3 group-hover:scale-110 transition-transform" />
                 <h4 className="font-bold text-[#333]">Ir a Google Analytics</h4>
                 <p className="text-xs text-gray-500 mt-1">Ver métricas detalladas</p>
@@ -1134,7 +1167,7 @@ const App = () => {
 
         {adminTab === 'materials' && (
           <div className="space-y-6 max-w-5xl">
-            <div className="bg-white p-6 rounded-xl border border-[#E0D8C3]">
+            <div className="bg-white p-6 rounded-xl border border-[#D6C4B0]">
               <div className="flex justify-between items-center mb-4 border-b pb-2">
                 <h3 className="font-bold text-[#8B5E3C] uppercase text-sm">Editar Materiales (Maderas)</h3>
                 <button onClick={uploadDefaultMaterials} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors shadow-sm" title="Cargar catálogo de maderas">
@@ -1142,7 +1175,7 @@ const App = () => {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-6 bg-gray-50 p-4 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-6 bg-[#F9F7F2] p-4 rounded-lg">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-gray-500">Nombre</label>
                   <input value={newMaterial.nombre} onChange={e => setNewMaterial({ ...newMaterial, nombre: e.target.value })} className="border p-2 rounded text-sm font-medium" />
@@ -1164,7 +1197,7 @@ const App = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {maderas.map(m => (
-                  <div key={m.id} className="border border-gray-200 rounded-lg p-4 relative group hover:border-[#8B5E3C] transition-all bg-white shadow-sm">
+                  <div key={m.id} className="border border-[#D6C4B0] rounded-lg p-4 relative group hover:border-[#8B5E3C] transition-all bg-white shadow-sm">
                     {editMaterialId === m.id ? (
                       <div className="space-y-3">
                         <div><label className="text-[10px] font-bold text-gray-400">Nombre</label><input className="w-full border p-1 rounded text-sm" value={editMaterialData.nombre} onChange={e => setEditMaterialData({ ...editMaterialData, nombre: e.target.value })} /></div>
@@ -1202,14 +1235,14 @@ const App = () => {
 
         {adminTab === 'melaminas' && (
           <div className="space-y-6 max-w-5xl">
-            <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
+            <div className="bg-white p-6 rounded-xl border border-[#D6C4B0] shadow-sm">
               <div className="flex justify-between items-center mb-4 border-b pb-2">
                 <h3 className="font-bold uppercase text-sm text-[#8B5E3C]">Gestión de Melaminas</h3>
                 <button onClick={uploadDefaultMelamines} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors shadow-sm" title="Cargar catálogo completo de melaminas">
                   <Save size={16} /> Sincronizar Defaults
                 </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-gray-50 p-4 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-[#F9F7F2] p-4 rounded-lg">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-gray-500">Nombre</label>
                   <input value={newMelamina.nombre} onChange={e => setNewMelamina({ ...newMelamina, nombre: e.target.value })} className="border p-2 rounded text-sm font-medium" />
@@ -1254,7 +1287,7 @@ const App = () => {
               <button onClick={saveCostos} className="flex items-center gap-2 bg-green-600 text-white py-3 px-6 rounded-lg font-bold shadow-md hover:bg-green-700 transition-all"><Save size={18} /> GUARDAR CAMBIOS</button>
             </div>
             {Object.entries(CATEGORIAS_COSTOS).map(([cat, keys]) => (
-              <div key={cat} className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
+              <div key={cat} className="bg-white p-6 rounded-xl border border-[#D6C4B0] shadow-sm">
                 <h3 className="font-bold text-[#8B5E3C] uppercase text-sm mb-4 border-b pb-2">{cat}</h3>
                 <div className="space-y-3">
                   {keys.map(k => (
@@ -1271,7 +1304,7 @@ const App = () => {
 
         {adminTab === 'gallery' && (
           <div className="space-y-6">
-            <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
+            <div className="bg-white p-6 rounded-xl border border-[#D6C4B0] shadow-sm">
               <h3 className="font-bold uppercase text-sm text-[#8B5E3C] mb-4">Gestión de Galería</h3>
               <div className="flex flex-col md:flex-row gap-2">
                 <input value={newImage.url} onChange={e => setNewImage({ ...newImage, url: e.target.value })} placeholder="URL Imagen (Ej: Google Drive o Directa)" className="flex-1 border p-3 rounded-lg text-sm font-medium" />
@@ -1281,7 +1314,7 @@ const App = () => {
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {galeria.map(img => (
-                <div key={img.id} className="relative group aspect-square rounded-xl overflow-hidden border border-[#E0D8C3] shadow-sm">
+                <div key={img.id} className="relative group aspect-square rounded-xl overflow-hidden border border-[#D6C4B0] shadow-sm">
                   <img src={getDirectDriveUrl(img.src)} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                   <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 text-white text-xs font-bold truncate">{img.alt}</div>
                   <button onClick={() => removeGalleryImage(img.id)} className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-full transition-opacity"><Trash2 size={16} /></button>
@@ -1293,7 +1326,7 @@ const App = () => {
 
         {adminTab === 'orders' && (
           <div className="space-y-6 max-w-6xl">
-            <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
+            <div className="bg-white p-6 rounded-xl border border-[#D6C4B0] shadow-sm">
               <h3 className="font-bold text-[#8B5E3C] uppercase text-sm mb-4 border-b pb-2">Pedidos Recientes</h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left text-gray-500">
@@ -1337,7 +1370,7 @@ const App = () => {
         )}
 
         {adminTab === 'config' && (
-          <div className="bg-white p-8 rounded-xl border border-[#E0D8C3] space-y-6 max-w-2xl mx-auto shadow-md">
+          <div className="bg-white p-8 rounded-xl border border-[#D6C4B0] space-y-6 max-w-2xl mx-auto shadow-md">
             <div className="flex justify-between items-center border-b pb-4">
               <h3 className="font-bold text-[#5D4037] uppercase text-lg">Configuración General</h3>
               <button onClick={handleSaveSettings} className="flex items-center gap-2 bg-[#5D4037] text-white py-2 px-4 rounded-lg hover:bg-[#3E2723] transition-colors font-bold"><Save size={20} /> Guardar</button>
@@ -1779,7 +1812,8 @@ const App = () => {
                       <div className={`text-xs ${THEME.accent} mt-1 font-bold`}>
                         {item.config.acabado !== 'natural' && item.config.tipoConstruccion !== 'chapa_inyectada' && `Terminación: ${item.config.acabado} • `}
                         {item.config.tipoConstruccion === 'chapa_inyectada' && `${item.config.chapa_color} ${item.config.chapa_acabado} • `}
-                        {item.config.marco && `Con Marco`}
+                        {item.config.marco && `Con Marco • `}
+                        {getPatasLabel(item.config.tipoPatas, item.config.modeloPatas) && `Patas: ${getPatasLabel(item.config.tipoPatas, item.config.modeloPatas)}`}
                       </div>
                       <p className={`text-sm font-bold ${THEME.secondaryText} mt-2`}>{item.precio > 0 ? `$${new Intl.NumberFormat('es-AR').format(item.precio)}` : 'A Cotizar'}</p>
                     </div>
@@ -1795,23 +1829,10 @@ const App = () => {
                 <h3 className={`text-xs font-bold uppercase ${THEME.accent} tracking-widest mb-4`}>Datos de Contacto</h3>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className={`flex items-center gap-3 bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] focus-within:border-[#8B5E3C] transition-colors`}><User size={18} className={THEME.textMuted} /><input value={cliente.nombre} onChange={e => setCliente({ ...cliente, nombre: e.target.value })} placeholder="Nombre" className={`bg-transparent w-full outline-none ${THEME.textMain} text-sm placeholder-[#999] font-medium`} /></div>
-                  <div className={`flex items-center gap-3 bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] focus-within:border-[#8B5E3C] transition-colors`}><MapPin size={18} className={THEME.textMuted} /><input value={cliente.lugar} onChange={e => setCliente({ ...cliente, lugar: e.target.value })} placeholder="Ciudad" className={`bg-transparent w-full outline-none ${THEME.textMain} text-sm placeholder-[#999] font-medium`} /></div>
+                  <div className={`bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] flex items-center gap-3`}><User size={18} className={THEME.textMuted} /><input value={cliente.nombre} onChange={e => setCliente({ ...cliente, nombre: e.target.value })} placeholder="Nombre" className="bg-transparent w-full outline-none text-sm" /></div>
+                  <div className={`bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] flex items-center gap-3`}><MapPin size={18} className={THEME.textMuted} /><input value={cliente.lugar} onChange={e => setCliente({ ...cliente, lugar: e.target.value })} placeholder="Ciudad" className="bg-transparent w-full outline-none text-sm" /></div>
                 </div>
-
-                {/* TELEFONO MEJORADO */}
-                <div className="flex items-center gap-3 bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] focus-within:border-[#8B5E3C] transition-colors">
-                  <Phone size={18} className={THEME.textMuted} />
-                  <input
-                    type="tel"
-                    pattern="[0-9]*"
-                    inputMode="numeric"
-                    value={cliente.telefono}
-                    onChange={e => setCliente({ ...cliente, telefono: e.target.value })}
-                    placeholder={cliente.telefono ? '' : '+543547531519'}
-                    className={`bg-transparent w-full outline-none ${THEME.textMain} text-sm placeholder-[#999] font-medium`}
-                  />
-                </div>
+                <div className={`bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] flex items-center gap-3`}><Phone size={18} className={THEME.textMuted} /><input type="tel" value={cliente.telefono} onChange={e => setCliente({ ...cliente, telefono: e.target.value })} placeholder="+54..." className="bg-transparent w-full outline-none text-sm" /></div>
 
                 <div className="grid grid-cols-2 gap-3 bg-[#F9F7F2] p-1.5 rounded-xl border border-[#E0D8C3]">
                   <button onClick={() => setCliente({ ...cliente, entrega: 'taller' })} className={`py-3 rounded-lg text-xs font-bold uppercase flex flex-col items-center gap-1 transition-all ${cliente.entrega === 'taller' ? `${THEME.accentBg} text-white shadow-sm` : THEME.textMuted}`}>
