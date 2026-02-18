@@ -20,7 +20,7 @@ import {
 // ==============================================================================
 
 // GEMINI API CONFIG
-const apiKey = ""; // Se inyecta en tiempo de ejecución
+const apiKey = ""; // Set by environment
 
 const userFirebaseConfig = {
   apiKey: "AIzaSyCObM7lu1VN6kvPx9Ifgd4eo4N3bgm-Oak",
@@ -49,16 +49,16 @@ const getDirectDriveUrl = (url) => {
   return url;
 };
 
-// --- TEMA PREMIUM (Paleta ajustada) ---
+// --- TEMA PREMIUM ---
 const THEME = {
-  bg: "bg-[#F5F2EB]",
+  bg: "bg-[#EAE2D6]",
   card: "bg-white border border-[#D6C4B0] shadow-sm",
   cardHover: "hover:border-[#5D4037] hover:shadow-lg transition-all duration-300 ease-out",
   accent: "text-[#8B5E3C]",
   accentBg: "bg-[#8B5E3C]",
   accentBorder: "border-[#8B5E3C]",
-  primary: "bg-[#2C241F]", // Marrón muy oscuro (Header)
-  primaryText: "text-[#2C241F]",
+  primary: "bg-[#5D4037]",
+  primaryText: "text-[#5D4037]",
   primaryHover: "hover:bg-[#3E2723]",
   secondary: "bg-[#7A8D6F]",
   secondaryText: "text-[#7A8D6F]",
@@ -268,7 +268,7 @@ const ACABADOS_CHAPA = [
 
 const GlobalStyles = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700;800;900&display=swap');
     
     body { font-family: 'Inter', sans-serif; background-color: #F5F2EB; }
     h1, h2, h3, h4, h5, h6 { font-family: 'Montserrat', sans-serif; }
@@ -354,15 +354,6 @@ const getMaterialVisual = (config, maderas, melaminas) => {
   }
   const madera = maderas.find(m => m.id === config.material);
   return { type: 'img', value: madera ? madera.src : '' };
-};
-
-// Helper para obtener label de patas
-const getPatasLabel = (tipo, modelo) => {
-  if (!tipo || tipo === 'sin_patas') return '';
-  const group = OPCIONES_PATAS[tipo];
-  if (!group) return '';
-  const leg = group.find(p => p.id === modelo);
-  return leg ? `${leg.nombre} (${tipo === 'metal' ? 'Metal' : 'Madera'})` : '';
 };
 
 // ==============================================================================
@@ -503,7 +494,7 @@ const App = () => {
     return onAuthStateChanged(auth, setUser);
   }, []);
 
-  // ANALYTICS & VISIT COUNTER
+  // ANALYTICS
   useEffect(() => {
     if (!user) return;
     const trackVisit = async () => {
@@ -770,8 +761,15 @@ const App = () => {
   useEffect(() => {
     if (catSeleccionada?.id === 'cat_muebles') { setPrecioItemActual(0); return; }
     if (paso === 3 && config.material) {
+
+      // SAFE VALUES (Evita NaN)
+      const anchoSafe = Number(config.ancho) || 0;
+      const largoSafe = Number(config.largo) || 0;
+      const cantCajonesSafe = Number(config.cantCajones) || 0;
+      const cantPuertasSafe = Number(config.cantPuertas) || 0;
+
       let structurePrice = 0;
-      const area = (config.ancho * config.largo) / 10000;
+      const area = (anchoSafe * largoSafe) / 10000;
       const mat = maderas.find(m => m.id === config.material);
 
       if (config.tipoConstruccion === 'placa') {
@@ -779,7 +777,7 @@ const App = () => {
       } else if (config.tipoConstruccion === 'chapa_inyectada') {
         structurePrice = area * costos.puerta_inyectada_m2;
         if (config.marco) {
-          const perimetro = ((config.ancho + config.largo) * 2) / 100;
+          const perimetro = ((anchoSafe + largoSafe) * 2) / 100;
           const costo_material_ml = (costos.cano_marco_principal_12m + costos.cano_marco_secundario_12m) / 12;
           structurePrice += (perimetro * costo_material_ml) + costos.marco_herrero_mano_obra + costos.marco_insumos_varios;
         }
@@ -802,13 +800,13 @@ const App = () => {
           base = mat ? costos[`madera_${mat.tier}`] : costos.madera_basica;
           if (config.uso === 'exterior') base *= costos.factor_exterior;
         }
-        let pies = (config.ancho / 2.5) * 2 * (config.largo / 100) * 0.3;
+        let pies = (anchoSafe / 2.5) * 2 * (largoSafe / 100) * 0.3;
         structurePrice = pies * base;
         if (config.tipoPatas === 'metal') structurePrice += costos.patas_metal;
         if (config.tipoPatas === 'madera') structurePrice += costos.patas_madera;
         if (config.marco) structurePrice += (base * 30);
-        structurePrice += (config.cantCajones * costos.costo_cajon_completo);
-        structurePrice += (config.cantPuertas * costos.costo_puerta_mueble);
+        structurePrice += (cantCajonesSafe * costos.costo_cajon_completo);
+        structurePrice += (cantPuertasSafe * costos.costo_puerta_mueble);
       }
       let finalPrice = structurePrice;
       if (config.tipoConstruccion === 'maciza' || config.tipoConstruccion === 'puerta_placa') {
@@ -819,8 +817,9 @@ const App = () => {
         if (config.chapa_color === 'oxidado') finalPrice += costos.term_pintura_chapa_oxi;
         else finalPrice += costos.term_pintura_chapa_std;
       }
+      // Aseguramos que sea un número válido
       finalPrice = Math.round(finalPrice / 1000) * 1000;
-      setPrecioItemActual(finalPrice);
+      setPrecioItemActual(isNaN(finalPrice) ? 0 : finalPrice);
     }
   }, [config, muebleSeleccionado, paso, costos, maderas, catSeleccionada]);
 
@@ -874,18 +873,17 @@ const App = () => {
     `;
 
     try {
+      // Usamos el modelo gemini-1.5-flash que es el estándar actual para API Keys gratuitas
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: contextText + "\n\nUsuario: " + aiQuery }] }] })
       });
       const data = await response.json();
-      if (data.error) {
-        setAiResponse(`Error de API: ${data.error.message || 'Clave inválida o sin permisos'}`);
-      } else if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+      if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
         setAiResponse(data.candidates[0].content.parts[0].text);
       } else {
-        setAiResponse("Lo siento, no pude procesar tu solicitud. Intenta de nuevo.");
+        setAiResponse("Lo siento, hubo un problema al conectar con el asistente. Por favor intenta de nuevo.");
       }
     } catch (error) {
       console.error("Error AI:", error);
@@ -896,198 +894,167 @@ const App = () => {
     }
   }, [aiQuery, maderas, melaminas]);
 
-  // --- FUNCIÓN DE DESCARGA PDF AUTOMÁTICA RECONSTRUIDA ---
+  // --- FUNCIÓN DE DESCARGA PDF AUTOMÁTICA ---
   const downloadPDF = () => {
     if (!pdfLibLoaded) return alert("Cargando generador de PDF, intenta en unos segundos...");
 
-    // Crear contenedor temporal para renderizar el PDF
-    // Usamos un ancho fijo de 800px para simular una hoja A4 en pantalla
-    // Esto asegura que el layout sea idéntico en móvil y escritorio
     const element = document.createElement('div');
-    element.style.width = '800px';
-    element.style.position = 'absolute';
-    element.style.left = '-9999px'; // Oculto fuera de la pantalla
-    element.style.top = '0';
-    document.body.appendChild(element);
-
+    // HTML del PDF - DISEÑO FACTURA PROFESIONAL A4 EXACTO
     const total = carrito.reduce((a, b) => a + b.precio, 0);
     const fecha = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const idPresupuesto = 1780 + Math.floor(Math.random() * 1000);
+    const idPresupuesto = Math.floor(1000 + Math.random() * 9000);
 
-    // --- CONSTRUCCIÓN DE ITEMS DE LA FACTURA ---
-    const itemsHtml = carrito.map((item, index) => {
-      // 1. Detalles Técnicos
-      let detalles = [];
-      detalles.push(`<strong>Medidas:</strong> ${item.config.ancho}cm x ${item.config.largo}cm${item.config.profundidad ? ` x ${item.config.profundidad}cm` : ''}`);
-      detalles.push(`<strong>Material:</strong> ${item.config.materialNombre}`);
-
-      if (item.config.tipoConstruccion === 'maciza' || item.config.tipoConstruccion.includes('chapa')) {
-        detalles.push(`<strong>Uso:</strong> ${item.config.uso === 'exterior' ? 'Exterior' : 'Interior'}`);
-      }
-
-      if (item.config.acabado && item.config.acabado !== 'natural') {
-        const acabadosMap = { cetol: 'Impregnante Protector', laca: 'Laca Poliuretánica', mate: 'Mate', satinado: 'Satinado', brillante: 'Brillante' };
-        detalles.push(`<strong>Terminación:</strong> ${acabadosMap[item.config.acabado] || item.config.acabado}`);
-      }
-
-      if (item.config.cantCajones > 0) detalles.push(`<strong>Cajones:</strong> ${item.config.cantCajones} unid.`);
-      if (item.config.cantPuertas > 0) detalles.push(`<strong>Puertas:</strong> ${item.config.cantPuertas} unid.`);
-
-      const patasLabel = getPatasLabel(item.config.tipoPatas, item.config.modeloPatas);
-      if (patasLabel) detalles.push(`<strong>Base:</strong> ${patasLabel}`);
-
-      if (item.config.marco) detalles.push(`<strong>Adicional:</strong> Con Marco`);
-
-      const precioTexto = item.precio > 0 ? `$${new Intl.NumberFormat('es-AR').format(item.precio)}` : 'A Cotizar';
-
-      // Alternar color de fondo para filas
-      const bgStyle = index % 2 === 0 ? 'background-color: #fff;' : 'background-color: #f9f9f9;';
-
-      // 2. Obtener visual del material para el PDF
+    const itemsHtml = carrito.map(item => {
+      // Buscar imagen del material
       const visual = getMaterialVisual(item.config, maderas, melaminas);
       let visualHtml = '';
       if (visual.type === 'img' && visual.value) {
-        visualHtml = `<img src="${getDirectDriveUrl(visual.value)}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; margin-right: 15px; float: left;">`;
+        visualHtml = `<img src="${getDirectDriveUrl(visual.value)}" style="width:50px;height:50px;border-radius:4px;object-fit:cover;border:1px solid #ddd;display:block;margin-right:15px;">`;
       } else if (visual.type === 'css') {
-        visualHtml = `<div style="width: 40px; height: 40px; background: ${visual.value}; border-radius: 4px; border: 1px solid #ddd; margin-right: 15px; float: left;"></div>`;
+        visualHtml = `<span style="display:block;width:50px;height:50px;border-radius:4px;background:${visual.value};margin-right:15px;border:1px solid #ddd;"></span>`;
+      } else {
+        visualHtml = `<div style="width:50px;height:50px;border-radius:4px;background:#eee;margin-right:15px;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;font-size:24px">${item.mueble.imagen}</div>`
       }
 
+      let acabadoLabel = 'Natural';
+      if (item.config.acabado) {
+        if (item.config.acabado === 'cetol') acabadoLabel = 'Cetol';
+        else if (item.config.acabado === 'laca') acabadoLabel = 'Laca';
+      }
+
+      // Estructura de "Mini Tabla" dentro de la celda
+      // Madera | Medidas | Uso | Terminación
+      const lineItems = [
+        { label: 'MATERIAL', value: item.config.materialNombre },
+        { label: 'MEDIDAS', value: `${item.config.ancho}x${item.config.largo}${item.config.profundidad ? `x${item.config.profundidad}` : ''}cm` },
+        { label: 'USO', value: item.config.uso.toUpperCase() },
+        { label: 'TERMINACIÓN', value: acabadoLabel.toUpperCase() }
+      ];
+
+      const detailsHtml = lineItems.map((d, i) => `
+        <span style="display:inline-block; font-size: 10px; color: #444; margin-right: 8px; ${i > 0 ? 'padding-left: 8px; border-left: 1px solid #ccc;' : ''}">
+           <strong style="color: #5D4037; font-weight: 800;">${d.label}:</strong> ${d.value}
+        </span>
+      `).join('');
+
       return `
-        <tr style="${bgStyle} border-bottom: 1px solid #eee;">
-          <td style="padding: 10px 15px; vertical-align: top;">
-             ${visualHtml}
-             <div style="font-weight: 800; color: #2C241F; font-size: 13px; text-transform: uppercase; margin-bottom: 4px;">${item.mueble.nombre}</div>
-             <div style="font-size: 10px; color: #666; line-height: 1.4; margin-left: 55px;"> <!-- Indentado para esquivar la imagen -->
-               ${detalles.join(' • ')}
+        <tr style="border-bottom: 1px solid #eee;">
+          <td style="padding: 15px 10px; vertical-align: top;">
+             <div style="display:flex; align-items: center;">
+                ${visualHtml}
+                <div>
+                    <strong style="font-size: 14px; display:block; margin-bottom: 6px; text-transform: uppercase; color: #333; font-weight: 900; letter-spacing: 0.5px;">${item.mueble.nombre}</strong>
+                    <div style="line-height: 1.6;">
+                       ${detailsHtml}
+                    </div>
+                </div>
              </div>
           </td>
-          <td style="padding: 10px 15px; text-align:right; vertical-align: top; font-weight: 700; font-size: 13px; color: #333;">${precioTexto}</td>
+          <td style="padding: 15px 10px; text-align:right; vertical-align: middle; font-weight: bold; font-size: 14px; color: #333;">
+            $${new Intl.NumberFormat('es-AR').format(item.precio)}
+          </td>
         </tr>`;
     }).join('');
 
-    // --- PLANTILLA HTML PRINCIPAL (DISEÑO PREMIUM OSCURO) ---
-    // Usamos colores de la paleta: Fondo oscuro #2C241F, texto claro #E0D8C3
     element.innerHTML = `
-      <div style="width: 100%; padding: 0; margin: 0; background: #fff; font-family: 'Helvetica', sans-serif; box-sizing: border-box;">
+      <div style="width: 210mm; height: 297mm; max-height: 297mm; overflow: hidden; box-sizing: border-box; font-family: 'Montserrat', sans-serif; color: #333; background: white; display: flex; flex-direction: column; position: relative; padding: 30px 40px 0 40px; page-break-inside: avoid;">
         
-        <!-- HEADER PREMIUM OSCURO -->
-        <div style="background-color: #2C241F; padding: 40px 40px 30px 40px; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid #8B5E3C;">
-            <div style="display: flex; flex-direction: column; justify-content: center;">
-                <!-- Logo en negativo/blanco si es posible, o el normal -->
-                <div style="background: #fff; padding: 5px; border-radius: 4px; display: inline-block; margin-bottom: 10px;">
-                  <img src="${getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}" style="height: 40px; object-fit: contain; display: block;" />
-                </div>
-                <div style="font-size: 9px; color: #E0D8C3; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
-                    ${DATOS_CONTACTO.nombre_negocio}<br>
-                    ${DATOS_CONTACTO.ubicacion_texto}
-                </div>
-            </div>
-            <div style="text-align: right;">
-                <h1 style="margin: 0; font-size: 32px; color: #E0D8C3; font-weight: 900; letter-spacing: -1px; text-transform: uppercase;">Presupuesto</h1>
-                <div style="font-size: 14px; color: #8B5E3C; font-weight: 700; margin-top: 5px;"># ${idPresupuesto}</div>
-                <div style="font-size: 11px; color: #aaa; margin-top: 5px; font-weight: 500;">Fecha: ${fecha}</div>
-            </div>
+        <!-- CABECERA COMPACTA -->
+        <div style="display:flex; justify-content:space-between; align-items: flex-end; border-bottom: 4px solid #5D4037; padding-bottom: 15px; margin-bottom: 20px;">
+           <div style="display: flex; flex-direction: column;">
+               <img src="${getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC}" style="height:50px; object-fit: contain; margin-bottom: 5px; align-self: flex-start;" />
+               <div style="font-size: 10px; color: #555; line-height: 1.2; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                  EBE MUEBLES<br/>
+                  ALTA GRACIA, CÓRDOBA
+               </div>
+           </div>
+           <div style="text-align:right;">
+             <h1 style="margin:0; font-size:42px; color:#5D4037; text-transform:uppercase; font-weight: 900; letter-spacing: -1px; line-height: 1;">PRESUPUESTO</h1>
+             <div style="margin-top: 5px; color:#8B5E3C; font-size: 18px; font-weight: 700;"># ${idPresupuesto}</div>
+           </div>
+        </div>
+        
+        <!-- CLIENTE & FECHA -->
+        <div style="margin-bottom: 20px; background: #FAFAFA; padding: 20px 25px; border-left: 6px solid #5D4037; display: flex; justify-content: space-between; align-items: center; border-radius: 4px;">
+           <div style="max-width: 60%;">
+              <span style="font-size: 10px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 1.5px; display: block; margin-bottom: 5px;">CLIENTE</span>
+              <h2 style="margin: 0; font-size: 20px; color: #222; font-weight: 800; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${cliente.nombre || 'CONSUMIDOR FINAL'}</h2>
+           </div>
+           <div style="text-align: right; font-size: 11px; color: #555;">
+              <div style="margin-bottom: 4px;"><strong style="color: #333; font-weight: 800;">FECHA:</strong> ${fecha}</div>
+              <div style="margin-bottom: 4px;"><strong style="color: #333; font-weight: 800;">TEL:</strong> ${cliente.telefono || '-'}</div>
+              <div><strong style="color: #333; font-weight: 800;">UBICACIÓN:</strong> ${cliente.lugar || '-'}</div>
+           </div>
         </div>
 
-        <!-- INFO CLIENTE (Estilo Franja) -->
-        <div style="padding: 30px 40px 10px 40px; background-color: #fff;">
-            <div style="background-color: #2C241F; color: #E0D8C3; padding: 15px 20px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <span style="font-size: 8px; color: #8B5E3C; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; display: block; margin-bottom: 2px;">Cliente</span>
-                    <div style="font-size: 16px; font-weight: 700; text-transform: uppercase;">${cliente.nombre || 'Consumidor Final'}</div>
-                </div>
-                <div style="text-align: right;">
-                     <div style="font-size: 11px;"><strong>Tel:</strong> ${cliente.telefono || '-'}</div>
-                     <div style="font-size: 11px; margin-top: 2px;"><strong>Ubicación:</strong> ${cliente.lugar || '-'}</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TABLA DE ITEMS -->
-        <div style="padding: 10px 40px; margin-bottom: 10px;">
-            <div style="background-color: #8B5E3C; color: #fff; padding: 8px 15px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border-radius: 4px 4px 0 0;">
-                DESCRIPCIÓN DEL PRODUCTO <span style="float: right;">SUBTOTAL</span>
-            </div>
-            <table style="width: 100%; border-collapse: collapse;">
-                <tbody>
-                    ${itemsHtml}
-                </tbody>
-            </table>
-        </div>
+        <!-- TABLA -->
+        <table style="width:100%; border-collapse: collapse; margin-bottom:20px;">
+           <thead>
+              <tr style="background:#5D4037; color:white;">
+                  <th style="padding:12px 15px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing: 1px; font-weight: 800;">DETALLE DEL PEDIDO</th>
+                  <th style="padding:12px 15px; text-align:right; font-size:11px; text-transform:uppercase; letter-spacing: 1px; font-weight: 800;">VALOR</th>
+              </tr>
+           </thead>
+           <tbody>${itemsHtml}</tbody>
+        </table>
 
         <!-- TOTALES -->
-        <div style="padding: 0 40px; display: flex; justify-content: flex-end; margin-bottom: 20px;">
-            <div style="width: 250px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr>
-                        <td style="padding: 6px 0; font-size: 11px; color: #666; border-bottom: 1px solid #eee;">Envío</td>
-                        <td style="padding: 6px 0; font-size: 11px; color: #666; text-align: right; border-bottom: 1px solid #eee;">A Cotizar</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 6px 0; font-size: 11px; color: #666; border-bottom: 1px solid #eee;">Instalación</td>
-                        <td style="padding: 6px 0; font-size: 11px; color: #666; text-align: right; border-bottom: 1px solid #eee;">A Cotizar</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 10px 0; font-size: 14px; font-weight: 800; color: #2C241F;">TOTAL</td>
-                        <td style="padding: 10px 0; font-size: 20px; font-weight: 900; color: #2C241F; text-align: right;">$${new Intl.NumberFormat('es-AR').format(total)}</td>
-                    </tr>
-                </table>
-            </div>
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 30px;">
+           <div style="width: 320px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: #666; padding-bottom: 8px; border-bottom: 1px solid #eee;">
+                 <span style="font-weight: 600;">ENVÍO</span>
+                 <span>A Cotizar</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 12px; color: #666; padding-bottom: 8px; border-bottom: 1px solid #eee;">
+                 <span style="font-weight: 600;">INSTALACIÓN</span>
+                 <span>A Cotizar</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                 <span style="font-weight: 900; font-size: 22px; color: #333; text-transform: uppercase;">TOTAL</span>
+                 <span style="font-weight: 900; font-size: 26px; color: #333;">$${new Intl.NumberFormat('es-AR').format(total)}</span>
+              </div>
+              <div style="text-align: right; font-size: 9px; color: #999; font-weight: 500; font-style: italic;">
+                 * Los precios son estimativos y sujetos a verificación final vía WhatsApp.
+              </div>
+           </div>
         </div>
 
-        <!-- FOOTER / CONDICIONES -->
-        <div style="padding: 20px 40px; background-color: #F9F9F9; border-top: 2px solid #2C241F;">
-             <table style="width: 100%; vertical-align: top;">
-                <tr>
-                    <td style="width: 50%; padding-right: 20px; vertical-align: top;">
-                        <h4 style="margin: 0 0 6px 0; font-size: 9px; color: #2C241F; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Condiciones Comerciales</h4>
-                        <p style="margin: 0; font-size: 8px; color: #666; line-height: 1.4;">
-                            <strong>Forma de Pago:</strong> 70% de anticipo para congelar precio e iniciar el trabajo, y el 30% restante contra entrega.
-                            <br>Los precios son fijos y en Pesos Argentinos una vez abonada la seña. Validez del presupuesto: 10 días hábiles.
-                        </p>
-                    </td>
-                    <td style="width: 50%; padding-left: 20px; vertical-align: top; border-left: 1px solid #ddd;">
-                        <h4 style="margin: 0 0 6px 0; font-size: 9px; color: #2C241F; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Entregas y Materiales</h4>
-                        <p style="margin: 0; font-size: 8px; color: #666; line-height: 1.4;">
-                            El tiempo de fabricación depende del producto y su complejidad (estimado 30-45 días).
-                            Trabajamos con materiales naturales; las vetas y tonos de la madera pueden variar levemente, garantizando una pieza única.
-                        </p>
-                    </td>
-                </tr>
-             </table>
-             <div style="margin-top: 15px; text-align: center; font-size: 9px; font-weight: 700; color: #8B5E3C; letter-spacing: 2px; text-transform: uppercase;">
-                Gracias por elegir diseño argentino
-             </div>
-             <div style="margin-top: 8px; text-align: center; display: flex; justify-content: center;">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/1/1a/Flag_of_Argentina.svg" style="height: 12px; border: 1px solid #ddd;" alt="ARG" />
-             </div>
+        <!-- PIE DE PAGINA (LEGALES) -->
+        <div style="margin-top: auto; background: #F5F5F5; padding: 25px 40px; margin-left: -40px; margin-right: -40px; border-top: 2px solid #5D4037;">
+           <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 20px;">
+               <div>
+                  <strong style="color: #333; display: block; margin-bottom: 8px; text-transform: uppercase; font-size: 10px; letter-spacing: 1px; font-weight: 900;">Condiciones Comerciales</strong>
+                  <p style="font-size: 9px; color: #555; line-height: 1.6; margin: 0; text-align: justify;">
+                    Forma de Pago: 70% de anticipo para congelar precio e iniciar el trabajo, y el 30% restante contra entrega. Los precios son fijos y en Pesos Argentinos una vez abonada la seña. Validez del presupuesto: 10 días hábiles.
+                  </p>
+               </div>
+               <div>
+                  <strong style="color: #333; display: block; margin-bottom: 8px; text-transform: uppercase; font-size: 10px; letter-spacing: 1px; font-weight: 900;">Entregas y Materiales</strong>
+                  <p style="font-size: 9px; color: #555; line-height: 1.6; margin: 0; text-align: justify;">
+                     El tiempo de demora se estipula una vez entregada la seña. Todos nuestros productos son elaborados con madera maciza seleccionada por su calidad y durabilidad. Al ser un material noble y vivo, es natural que presente variaciones de tono o movimientos sutiles ante cambios climáticos; estas no son fallas, sino la huella de autenticidad de la madera real. En eBe Muebles rechazamos el uso de enchapados: trabajamos exclusivamente con madera entera y procesos artesanales, garantizando una pieza única, resistente y con estética atemporal.
+                  </p>
+               </div>
+           </div>
+           
+           <div style="text-align:center; padding-top: 15px; border-top: 1px solid #ddd; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+              <div style="color:#8B5E3C; font-size:9px; letter-spacing:3px; text-transform: uppercase; font-weight: 900;">Gracias por elegir diseño argentino</div>
+              <img src="https://cdn-icons-png.flaticon.com/512/197/197573.png" style="width: 24px; height: auto;" />
+           </div>
         </div>
-
       </div>
     `;
 
-    // Configuración para html2pdf - FIX DEFINITIVO MÓVIL
+    // Configuración para html2pdf - CALIDAD ULTRA HD (Escala 5)
     const opt = {
       margin: 0,
-      filename: `Presupuesto_eBe_${idPresupuesto}_${cliente.nombre || 'Cliente'}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: {
-        scale: 2, // Buena calidad
-        useCORS: true,
-        logging: false,
-        windowWidth: 800 // Forzamos el ancho de renderizado a 800px (ancho de nuestro contenedor)
-      },
+      filename: `Presupuesto_eBe_${cliente.nombre || 'Cliente'}.pdf`,
+      image: { type: 'jpeg', quality: 1 },
+      html2canvas: { scale: 5, useCORS: true, logging: false, letterRendering: true, scrollX: 0, scrollY: 0 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    // Ejecutar descarga y limpiar DOM
-    window.html2pdf().set(opt).from(element).save().then(() => {
-      document.body.removeChild(element);
-    }).catch(err => {
-      console.error(err);
-      document.body.removeChild(element);
-      alert("Error al generar PDF. Intente nuevamente.");
-    });
+    // Ejecutar descarga
+    window.html2pdf().set(opt).from(element).save();
   };
 
   const enviarWhatsapp = useCallback(async () => {
@@ -1122,7 +1089,7 @@ const App = () => {
     // Mensaje WhatsApp
     let text = `👋 Hola *eBe Muebles*, soy ${cliente.nombre}.\n📍 Desde: ${cliente.lugar}\n📋 *PEDIDO WEB #${nextOrderNumber}*\n\n`;
     carrito.forEach(i => text += `🔹 *${i.mueble.nombre}* \n`);
-    text += `\n💰 *Total: $${new Intl.NumberFormat('es-AR').format(total)}*`;
+    text += `\n💰 *Total Estimado: $${new Intl.NumberFormat('es-AR').format(total)}*`;
     text += `\n\n(He descargado el PDF del presupuesto)`;
 
     window.open(`https://wa.me/${DATOS_CONTACTO.telefono_whatsapp}?text=${encodeURIComponent(text)}`, '_blank');
@@ -1136,9 +1103,9 @@ const App = () => {
 
   // --- RENDER ---
   if (isAdmin) return (
-    <div className={`min-h-screen bg-[#F5F2EB] text-[#2C241F] font-sans flex flex-col md:flex-row`}>
+    <div className={`min-h-screen bg-[#F5F5F5] text-[#333] font-sans flex flex-col md:flex-row`}>
       {/* Sidebar Admin (Responsive) */}
-      <div className="w-full md:w-64 bg-white border-b md:border-r border-[#D6C4B0] flex flex-row md:flex-col fixed md:h-full z-20 transition-all items-center md:items-stretch justify-between md:justify-start px-4 md:px-0">
+      <div className="w-full md:w-64 bg-white border-b md:border-r border-[#E0E0E0] flex flex-row md:flex-col fixed md:h-full z-20 transition-all items-center md:items-stretch justify-between md:justify-start px-4 md:px-0">
         <div className="p-4 md:p-6 flex items-center justify-center md:justify-start gap-3">
           <Settings className="text-[#5D4037] animate-spin-slow" />
           <span className="font-bold text-[#5D4037] text-lg hidden md:block uppercase tracking-wider">Admin</span>
@@ -1159,7 +1126,7 @@ const App = () => {
             </button>
           ))}
         </div>
-        <div className="p-4 border-t border-[#D6C4B0] hidden md:block mt-auto">
+        <div className="p-4 border-t border-[#E0E0E0] hidden md:block mt-auto">
           <button onClick={() => { signOut(auth); setIsAdmin(false); signInAnonymously(auth); }} className="w-full text-red-500 flex items-center justify-center md:justify-start gap-2 hover:bg-red-50 p-3 rounded-xl transition-colors font-bold text-sm"><LogOut size={20} /> <span className="hidden md:block">Salir</span></button>
         </div>
       </div>
@@ -1167,10 +1134,10 @@ const App = () => {
 
         {adminTab === 'dashboard' && (
           <div className="space-y-6">
-            <div className="text-3xl font-bold text-[#2C241F]">Panel de Control</div>
+            <div className="text-3xl font-bold text-[#333]">Panel de Control</div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white p-6 rounded-xl border border-[#D6C4B0] shadow-sm">
-                <h4 className="text-xs font-bold text-[#6B5A4E] uppercase tracking-widest mb-2">Visitas Totales</h4>
+              <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
+                <h4 className="text-xs font-bold text-[#999] uppercase tracking-widest mb-2">Visitas Totales</h4>
                 <div className="text-4xl font-black text-[#5D4037]">{visitStats.mobile + visitStats.desktop}</div>
                 <div className="mt-4 text-xs font-medium text-gray-500 flex gap-4">
                   <span className="flex items-center gap-1"><Smartphone size={14} /> {visitStats.mobile} Móvil</span>
@@ -1178,7 +1145,7 @@ const App = () => {
                 </div>
               </div>
 
-              <a href="https://analytics.google.com/" target="_blank" rel="noreferrer" className="bg-white p-6 rounded-xl border border-[#D6C4B0] shadow-sm flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-colors group">
+              <a href="https://analytics.google.com/" target="_blank" rel="noreferrer" className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-colors group">
                 <BarChart3 size={32} className="text-[#F4B400] mb-3 group-hover:scale-110 transition-transform" />
                 <h4 className="font-bold text-[#333]">Ir a Google Analytics</h4>
                 <p className="text-xs text-gray-500 mt-1">Ver métricas detalladas</p>
@@ -1189,7 +1156,7 @@ const App = () => {
 
         {adminTab === 'materials' && (
           <div className="space-y-6 max-w-5xl">
-            <div className="bg-white p-6 rounded-xl border border-[#D6C4B0]">
+            <div className="bg-white p-6 rounded-xl border border-[#E0D8C3]">
               <div className="flex justify-between items-center mb-4 border-b pb-2">
                 <h3 className="font-bold text-[#8B5E3C] uppercase text-sm">Editar Materiales (Maderas)</h3>
                 <button onClick={uploadDefaultMaterials} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors shadow-sm" title="Cargar catálogo de maderas">
@@ -1197,7 +1164,7 @@ const App = () => {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-6 bg-[#F9F7F2] p-4 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-6 bg-gray-50 p-4 rounded-lg">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-gray-500">Nombre</label>
                   <input value={newMaterial.nombre} onChange={e => setNewMaterial({ ...newMaterial, nombre: e.target.value })} className="border p-2 rounded text-sm font-medium" />
@@ -1219,7 +1186,7 @@ const App = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {maderas.map(m => (
-                  <div key={m.id} className="border border-[#D6C4B0] rounded-lg p-4 relative group hover:border-[#8B5E3C] transition-all bg-white shadow-sm">
+                  <div key={m.id} className="border border-gray-200 rounded-lg p-4 relative group hover:border-[#8B5E3C] transition-all bg-white shadow-sm">
                     {editMaterialId === m.id ? (
                       <div className="space-y-3">
                         <div><label className="text-[10px] font-bold text-gray-400">Nombre</label><input className="w-full border p-1 rounded text-sm" value={editMaterialData.nombre} onChange={e => setEditMaterialData({ ...editMaterialData, nombre: e.target.value })} /></div>
@@ -1257,14 +1224,14 @@ const App = () => {
 
         {adminTab === 'melaminas' && (
           <div className="space-y-6 max-w-5xl">
-            <div className="bg-white p-6 rounded-xl border border-[#D6C4B0] shadow-sm">
+            <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
               <div className="flex justify-between items-center mb-4 border-b pb-2">
                 <h3 className="font-bold uppercase text-sm text-[#8B5E3C]">Gestión de Melaminas</h3>
                 <button onClick={uploadDefaultMelamines} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors shadow-sm" title="Cargar catálogo completo de melaminas">
                   <Save size={16} /> Sincronizar Defaults
                 </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-[#F9F7F2] p-4 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-gray-50 p-4 rounded-lg">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-bold text-gray-500">Nombre</label>
                   <input value={newMelamina.nombre} onChange={e => setNewMelamina({ ...newMelamina, nombre: e.target.value })} className="border p-2 rounded text-sm font-medium" />
@@ -1309,7 +1276,7 @@ const App = () => {
               <button onClick={saveCostos} className="flex items-center gap-2 bg-green-600 text-white py-3 px-6 rounded-lg font-bold shadow-md hover:bg-green-700 transition-all"><Save size={18} /> GUARDAR CAMBIOS</button>
             </div>
             {Object.entries(CATEGORIAS_COSTOS).map(([cat, keys]) => (
-              <div key={cat} className="bg-white p-6 rounded-xl border border-[#D6C4B0] shadow-sm">
+              <div key={cat} className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
                 <h3 className="font-bold text-[#8B5E3C] uppercase text-sm mb-4 border-b pb-2">{cat}</h3>
                 <div className="space-y-3">
                   {keys.map(k => (
@@ -1326,7 +1293,7 @@ const App = () => {
 
         {adminTab === 'gallery' && (
           <div className="space-y-6">
-            <div className="bg-white p-6 rounded-xl border border-[#D6C4B0] shadow-sm">
+            <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
               <h3 className="font-bold uppercase text-sm text-[#8B5E3C] mb-4">Gestión de Galería</h3>
               <div className="flex flex-col md:flex-row gap-2">
                 <input value={newImage.url} onChange={e => setNewImage({ ...newImage, url: e.target.value })} placeholder="URL Imagen (Ej: Google Drive o Directa)" className="flex-1 border p-3 rounded-lg text-sm font-medium" />
@@ -1336,7 +1303,7 @@ const App = () => {
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {galeria.map(img => (
-                <div key={img.id} className="relative group aspect-square rounded-xl overflow-hidden border border-[#D6C4B0] shadow-sm">
+                <div key={img.id} className="relative group aspect-square rounded-xl overflow-hidden border border-[#E0D8C3] shadow-sm">
                   <img src={getDirectDriveUrl(img.src)} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                   <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 text-white text-xs font-bold truncate">{img.alt}</div>
                   <button onClick={() => removeGalleryImage(img.id)} className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-full transition-opacity"><Trash2 size={16} /></button>
@@ -1348,7 +1315,7 @@ const App = () => {
 
         {adminTab === 'orders' && (
           <div className="space-y-6 max-w-6xl">
-            <div className="bg-white p-6 rounded-xl border border-[#D6C4B0] shadow-sm">
+            <div className="bg-white p-6 rounded-xl border border-[#E0D8C3] shadow-sm">
               <h3 className="font-bold text-[#8B5E3C] uppercase text-sm mb-4 border-b pb-2">Pedidos Recientes</h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left text-gray-500">
@@ -1392,7 +1359,7 @@ const App = () => {
         )}
 
         {adminTab === 'config' && (
-          <div className="bg-white p-8 rounded-xl border border-[#D6C4B0] space-y-6 max-w-2xl mx-auto shadow-md">
+          <div className="bg-white p-8 rounded-xl border border-[#E0D8C3] space-y-6 max-w-2xl mx-auto shadow-md">
             <div className="flex justify-between items-center border-b pb-4">
               <h3 className="font-bold text-[#5D4037] uppercase text-lg">Configuración General</h3>
               <button onClick={handleSaveSettings} className="flex items-center gap-2 bg-[#5D4037] text-white py-2 px-4 rounded-lg hover:bg-[#3E2723] transition-colors font-bold"><Save size={20} /> Guardar</button>
@@ -1803,6 +1770,7 @@ const App = () => {
                 <span className={`text-3xl md:text-4xl font-bold ${THEME.textMain} tracking-tight font-sans`}>
                   {precioItemActual > 0 ? `$${new Intl.NumberFormat('es-AR').format(precioItemActual)}` : 'A Cotizar'}
                 </span>
+                <span className="text-[10px] text-gray-400 mt-1 italic font-medium">*Presupuesto Estimativo</span>
               </div>
               <button onClick={agregarCarrito} className={`${THEME.primary} hover:${THEME.primaryHover} text-white w-full py-4 rounded-xl font-bold uppercase tracking-wider shadow-lg shadow-[#5D4037]/20 transition-all active:scale-95 flex items-center justify-center gap-3`}>
                 <Plus size={20} /> AGREGAR AL PEDIDO
@@ -1834,8 +1802,7 @@ const App = () => {
                       <div className={`text-xs ${THEME.accent} mt-1 font-bold`}>
                         {item.config.acabado !== 'natural' && item.config.tipoConstruccion !== 'chapa_inyectada' && `Terminación: ${item.config.acabado} • `}
                         {item.config.tipoConstruccion === 'chapa_inyectada' && `${item.config.chapa_color} ${item.config.chapa_acabado} • `}
-                        {item.config.marco && `Con Marco • `}
-                        {getPatasLabel(item.config.tipoPatas, item.config.modeloPatas) && `Patas: ${getPatasLabel(item.config.tipoPatas, item.config.modeloPatas)}`}
+                        {item.config.marco && `Con Marco`}
                       </div>
                       <p className={`text-sm font-bold ${THEME.secondaryText} mt-2`}>{item.precio > 0 ? `$${new Intl.NumberFormat('es-AR').format(item.precio)}` : 'A Cotizar'}</p>
                     </div>
@@ -1851,10 +1818,23 @@ const App = () => {
                 <h3 className={`text-xs font-bold uppercase ${THEME.accent} tracking-widest mb-4`}>Datos de Contacto</h3>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className={`bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] flex items-center gap-3`}><User size={18} className={THEME.textMuted} /><input value={cliente.nombre} onChange={e => setCliente({ ...cliente, nombre: e.target.value })} placeholder="Nombre" className="bg-transparent w-full outline-none text-sm" /></div>
-                  <div className={`bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] flex items-center gap-3`}><MapPin size={18} className={THEME.textMuted} /><input value={cliente.lugar} onChange={e => setCliente({ ...cliente, lugar: e.target.value })} placeholder="Ciudad" className="bg-transparent w-full outline-none text-sm" /></div>
+                  <div className={`flex items-center gap-3 bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] focus-within:border-[#8B5E3C] transition-colors`}><User size={18} className={THEME.textMuted} /><input value={cliente.nombre} onChange={e => setCliente({ ...cliente, nombre: e.target.value })} placeholder="Nombre" className={`bg-transparent w-full outline-none ${THEME.textMain} text-sm placeholder-[#999] font-medium`} /></div>
+                  <div className={`flex items-center gap-3 bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] focus-within:border-[#8B5E3C] transition-colors`}><MapPin size={18} className={THEME.textMuted} /><input value={cliente.lugar} onChange={e => setCliente({ ...cliente, lugar: e.target.value })} placeholder="Ciudad" className={`bg-transparent w-full outline-none ${THEME.textMain} text-sm placeholder-[#999] font-medium`} /></div>
                 </div>
-                <div className={`bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] flex items-center gap-3`}><Phone size={18} className={THEME.textMuted} /><input type="tel" value={cliente.telefono} onChange={e => setCliente({ ...cliente, telefono: e.target.value })} placeholder="+54..." className="bg-transparent w-full outline-none text-sm" /></div>
+
+                {/* TELEFONO MEJORADO */}
+                <div className="flex items-center gap-3 bg-[#F9F7F2] p-4 rounded-xl border border-[#E0D8C3] focus-within:border-[#8B5E3C] transition-colors">
+                  <Phone size={18} className={THEME.textMuted} />
+                  <input
+                    type="tel"
+                    pattern="[0-9]*"
+                    inputMode="numeric"
+                    value={cliente.telefono}
+                    onChange={e => setCliente({ ...cliente, telefono: e.target.value })}
+                    placeholder={cliente.telefono ? '' : '+543547531519'}
+                    className={`bg-transparent w-full outline-none ${THEME.textMain} text-sm placeholder-[#999] font-medium`}
+                  />
+                </div>
 
                 <div className="grid grid-cols-2 gap-3 bg-[#F9F7F2] p-1.5 rounded-xl border border-[#E0D8C3]">
                   <button onClick={() => setCliente({ ...cliente, entrega: 'taller' })} className={`py-3 rounded-lg text-xs font-bold uppercase flex flex-col items-center gap-1 transition-all ${cliente.entrega === 'taller' ? `${THEME.accentBg} text-white shadow-sm` : THEME.textMuted}`}>
@@ -1881,6 +1861,7 @@ const App = () => {
                 <div className="flex flex-col items-center">
                   <span className={`text-xs ${THEME.textMuted} uppercase tracking-widest mb-1`}>Total Estimado</span>
                   <span className={`text-3xl md:text-4xl font-bold ${THEME.textMain} tracking-tight font-sans`}>${new Intl.NumberFormat('es-AR').format(carrito.reduce((a, b) => a + b.precio, 0))}</span>
+                  <span className="text-[10px] text-gray-400 mt-1 italic font-medium">*Sujeto a verificación final</span>
                 </div>
                 <div className="grid grid-cols-2 gap-4 w-full">
                   <button onClick={() => downloadPDF(null)} className={`w-full py-4 rounded-xl font-bold uppercase text-[#5D4037] border border-[#5D4037] hover:bg-[#5D4037] hover:text-white transition-all flex items-center justify-center gap-2 text-xs md:text-sm`}>
