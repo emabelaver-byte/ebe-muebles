@@ -144,6 +144,7 @@ const ACABADOS = [{ id: 'natural', nombre: 'NATURAL', price: 0 }, { id: 'cetol',
 const COLORES_CHAPA = [{ id: 'negro', nombre: 'Negro', css: '#1a1a1a' }, { id: 'blanco', nombre: 'Blanco', css: '#f5f5f5' }, { id: 'oxidado', nombre: 'Oxidado', css: 'linear-gradient(45deg, #8B4513, #5D4037)' }];
 const ACABADOS_CHAPA = [{ id: 'mate', nombre: 'Mate' }, { id: 'satinado', nombre: 'Satinado' }, { id: 'brillante', nombre: 'Brill.' }];
 
+/* STREAMING_CHUNK:Componentes Helpers... */
 const GlobalStyles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
@@ -155,10 +156,10 @@ const GlobalStyles = () => (
     ::-webkit-scrollbar-thumb { background: #E0D8CC; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #36251B; }
     
-    /* Maderas grandes en movil y GIGANTES en PC */
-    .swatch-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    /* Maderas en 2 columnas en movil y enormes en PC */
+    .swatch-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
     @media (min-width: 768px) {
-       .swatch-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 24px; }
+       .swatch-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
     }
   `}</style>
 );
@@ -188,7 +189,7 @@ const Header = React.memo(({ onBack, title, onLogoClick, showCart, cartCount, on
         </button>
       )}
       <div onClick={onLogoClick} className="cursor-pointer">
-        <img src={getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC} alt="Logo" className="h-8 w-auto opacity-90 hover:opacity-100 transition-opacity object-contain drop-shadow-sm" />
+        <img src={getDirectDriveUrl(logoUrl) || DEFAULT_LOGO_SRC} alt="Logo" referrerPolicy="no-referrer" className="h-8 w-auto opacity-90 hover:opacity-100 transition-opacity object-contain drop-shadow-sm" />
       </div>
     </div>
   </header>
@@ -202,7 +203,7 @@ const IconRenderer = ({ name, size = 24, className }) => {
 
 const getMaterialVisual = (config, maderas, melaminas) => {
   if (config?.tipoConstruccion === 'chapa_inyectada') {
-    const color = COLORES_CHAPA.find(c => c.id === config?.chapa_color);
+    const color = COLORES_CHAPA.find(c => c.id === config.chapa_color);
     return { type: 'css', value: color ? color.css : '#000' };
   }
   if (config?.tipoConstruccion === 'puerta_placa' || config?.tipoConstruccion === 'puerta_enchapada') {
@@ -226,6 +227,7 @@ const InputMedida = React.memo(({ label, val, onChange }) => (
   </div>
 ));
 
+/* STREAMING_CHUNK:App Principal y Estados... */
 const App = () => {
   const [paso, setPaso] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -263,9 +265,11 @@ const App = () => {
   const [catSeleccionada, setCatSeleccionada] = useState(null);
   const [muebleSeleccionado, setMuebleSeleccionado] = useState(null);
 
+  // Config State (materialesSeleccionados arranca VACÍO)
   const [config, setConfig] = useState({
     ancho: 160, largo: 80, profundidad: 40, cantidad: 1,
-    materialesSeleccionados: ['eucalipto'], acabado: 'natural', tipoPatas: 'sin_patas', modeloPatas: 'ninguna',
+    materialesSeleccionados: [],
+    acabado: 'natural', tipoPatas: 'sin_patas', modeloPatas: 'ninguna',
     marco: false, cantCajones: 0, cantPuertas: 0, uso: 'interior', tipoConstruccion: 'maciza',
     chapa_color: 'negro', chapa_acabado: 'satinado', espesorPulgadas: 1.5,
     envio: '', instalacion: ''
@@ -282,15 +286,6 @@ const App = () => {
   const [selectedImage, setSelectedImage] = useState(null);
 
   const isMDF = config.tipoConstruccion === 'placa';
-
-  const getHeaderTitle = useCallback(() => {
-    if (paso === 5) return "Galería";
-    if (paso === 4) return "Tu Pedido";
-    if (paso === 3 && muebleSeleccionado) return muebleSeleccionado.nombre;
-    if (paso === 2 && catSeleccionada) return catSeleccionada.label;
-    if (paso === 1) return "Categorías";
-    return "EBE MUEBLES";
-  }, [paso, muebleSeleccionado, catSeleccionada]);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -359,6 +354,7 @@ const App = () => {
     document.body.appendChild(script);
   }, []);
 
+  /* STREAMING_CHUNK:Funciones Admin y Firebase... */
   const handleAdminLogin = useCallback(async () => {
     const provider = new GoogleAuthProvider();
     try {
@@ -372,13 +368,6 @@ const App = () => {
       }
     } catch (e) {
       console.error("Error Auth:", e);
-      // Bypass para el entorno de vista previa
-      if (e.code === 'auth/unauthorized-domain' || e.message.includes('unauthorized-domain')) {
-        alert("⚠️ Entorno de prueba detectado: Firebase bloquea este dominio temporal. Te damos acceso directo al panel para que puedas probarlo.");
-        setIsAdmin(true);
-      } else {
-        alert("Error al iniciar sesión: " + e.message);
-      }
     }
   }, []);
 
@@ -465,12 +454,13 @@ const App = () => {
     }
   };
 
+  /* STREAMING_CHUNK:Calculos y Precios... */
   useEffect(() => {
     if (paso === 3 && muebleSeleccionado) {
       const isMaciza = muebleSeleccionado.id?.includes('mesa') || muebleSeleccionado.id?.includes('puerta') || muebleSeleccionado.id?.includes('tapa') || muebleSeleccionado.id?.includes('escalon');
       setConfig(prev => ({
         ...prev, tipoConstruccion: isMaciza ? 'maciza' : 'placa', uso: 'interior',
-        materialesSeleccionados: isMaciza ? ['eucalipto'] : [], cantCajones: 0, cantPuertas: 0, tipoPatas: 'sin_patas', modeloPatas: 'ninguna', marco: false,
+        materialesSeleccionados: [], cantCajones: 0, cantPuertas: 0, tipoPatas: 'sin_patas', modeloPatas: 'ninguna', marco: false,
         profundidad: muebleSeleccionado.prof_def || 40, espesorPulgadas: muebleSeleccionado.espesor || 1.5, cantidad: 1
       }));
     }
@@ -578,19 +568,48 @@ const App = () => {
     }
   }, [config, muebleSeleccionado, paso, costos, maderas, catSeleccionada]);
 
+  /* STREAMING_CHUNK:Funciones del Carrito... */
+  const handleBack = useCallback(() => {
+    if (paso === 4) {
+      setCheckoutPaso('form');
+      setPaso(1);
+    }
+    else if (paso === 5) setPaso(0);
+    else if (paso === 3) {
+      if (catSeleccionada?.destino === 'directo') {
+        setMuebleSeleccionado(null);
+        setCatSeleccionada(null);
+        setPaso(1);
+      } else {
+        setMuebleSeleccionado(null);
+        setPaso(2);
+      }
+    }
+    else if (paso === 2) {
+      setCatSeleccionada(null);
+      setPaso(1);
+    }
+    else if (paso === 1) {
+      setCatSeleccionada(null);
+      setVendedorActual(null);
+      setPaso(0);
+    }
+  }, [paso, catSeleccionada]);
+
   const agregarAlCarrito = () => {
     const nuevosItems = preciosMultiples.map(p => {
       const mat = maderas.find(m => m.id === p.matId);
       return {
         id: Date.now() + Math.random(),
         mueble: muebleSeleccionado,
-        config: { ...config, material: p.matId, materialNombre: mat?.nombre || 'Madera', espesorVisual: config.tipoConstruccion === 'maciza' ? `${config.espesorPulgadas}"` : espesorVisual },
+        config: { ...config, material: p.matId, materialNombre: mat ? mat.nombre : 'Madera', espesorVisual: config.tipoConstruccion === 'maciza' ? `${config.espesorPulgadas}"` : espesorVisual },
         precio: p.precioTotal
       };
     });
     setCarrito(prev => [...prev, ...nuevosItems]);
-    setPaso(1);
+    setMuebleSeleccionado(null);
     setCatSeleccionada(null);
+    setPaso(1);
   };
 
   const guardarPresupuestoInterno = async () => {
@@ -601,7 +620,7 @@ const App = () => {
     try {
       const q = query(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'orders'), orderBy('orderNumber', 'desc'), limit(1));
       const snap = await getDocs(q);
-      if (!snap.empty) nextOrderNumber = (snap.docs[0].data().orderNumber || 0) + 1;
+      if (!snap.empty) nextOrderNumber = (snap.docs[0].data()?.orderNumber || 0) + 1;
     } catch (e) { }
 
     try {
@@ -622,6 +641,8 @@ const App = () => {
       setCheckoutPaso('form');
       setShowEnvio(false);
       setShowInstalacion(false);
+      setMuebleSeleccionado(null);
+      setCatSeleccionada(null);
       setPaso(1);
     } catch (e) { alert("Error al guardar."); }
   };
@@ -805,6 +826,16 @@ const App = () => {
     downloadPDF();
   }, [carrito, cliente, config.envio, config.instalacion, vendedorActual, downloadPDF]);
 
+  /* STREAMING_CHUNK:Render Principal Vendedores... */
+  const getHeaderTitle = useCallback(() => {
+    if (paso === 5) return "Galería";
+    if (paso === 4) return "Tu Pedido";
+    if (paso === 3 && muebleSeleccionado) return muebleSeleccionado.nombre;
+    if (paso === 2 && catSeleccionada) return catSeleccionada.label;
+    if (paso === 1) return "Categorías";
+    return "EBE MUEBLES";
+  }, [paso, muebleSeleccionado, catSeleccionada]);
+
   if (!vendedorActual && !isAdmin) {
     return (
       <div className={`min-h-screen ${THEME.bg} flex items-center justify-center p-6 font-sans`}>
@@ -815,7 +846,7 @@ const App = () => {
             {vendedores.map(v => (
               <button key={v.id} onClick={() => setVendedorActual(v.nombre)} className="flex flex-col items-center gap-3 p-4 rounded-2xl bg-white border border-[#E0D8CC] hover:border-[#36251B] hover:shadow-md transition-all group">
                 <div className="w-16 h-16 rounded-full bg-[#F4F1EB] border border-[#E0D8CC] flex items-center justify-center text-[#36251B] font-bold text-2xl group-hover:bg-[#36251B] group-hover:border-[#36251B] group-hover:text-white transition-colors overflow-hidden shadow-sm">
-                  {v.avatarUrl ? <img src={v.avatarUrl} className="w-full h-full object-cover" /> : v.nombre.charAt(0)}
+                  {v.avatarUrl ? <img src={v.avatarUrl} referrerPolicy="no-referrer" className="w-full h-full object-cover" /> : v.nombre.charAt(0)}
                 </div>
                 <span className="text-xs font-semibold text-[#36251B]">{v.nombre}</span>
               </button>
@@ -826,6 +857,7 @@ const App = () => {
     );
   }
 
+  /* STREAMING_CHUNK:Render Admin Panel... */
   if (isAdmin) return (
     <div className={`min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col`}>
       <div className="bg-white border-b border-slate-200 sticky top-0 z-30 px-6 py-4 flex items-center justify-between shadow-sm">
@@ -899,7 +931,7 @@ const App = () => {
                             </div>
                             <div className="flex items-center gap-4 mb-4">
                               <div className="w-14 h-14 rounded-full bg-[#F4F1EB] border border-slate-200 flex items-center justify-center text-[#36251B] font-bold text-xl overflow-hidden shadow-sm">
-                                {v.avatarUrl ? <img src={v.avatarUrl} className="w-full h-full object-cover" /> : v.nombre.charAt(0)}
+                                {v.avatarUrl ? <img src={v.avatarUrl} referrerPolicy="no-referrer" className="w-full h-full object-cover" /> : v.nombre.charAt(0)}
                               </div>
                               <div>
                                 <h3 className="font-bold text-lg text-slate-800">{v.nombre}</h3>
@@ -941,11 +973,11 @@ const App = () => {
                     <>
                       <div className="flex items-center gap-5 mb-8">
                         <div className="w-20 h-20 rounded-full bg-white border-4 border-slate-100 flex items-center justify-center text-[#36251B] font-bold text-3xl overflow-hidden shadow-sm">
-                          {v.avatarUrl ? <img src={v.avatarUrl} className="w-full h-full object-cover" /> : v.nombre.charAt(0)}
+                          {v.avatarUrl ? <img src={v.avatarUrl} referrerPolicy="no-referrer" className="w-full h-full object-cover" /> : v.nombre.charAt(0)}
                         </div>
                         <div>
                           <h2 className="text-3xl font-bold tracking-tight text-[#36251B]">{v.nombre}</h2>
-                          <div className="text-sm font-bold text-emerald-600 uppercase tracking-wider mt-1">{approvedOrders.length} Presupuestos Aprobados</div>
+                          <div className="text-sm font-bold text-slate-500 uppercase tracking-wider mt-1">Perfil de Asesor</div>
                         </div>
                       </div>
 
@@ -1012,7 +1044,14 @@ const App = () => {
                                   </td>
                                   <td className="px-6 py-4 text-xs text-slate-600">
                                     {order.items?.map((i, idx) => (
-                                      <div key={idx} className="mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]">• {i.mueble?.nombre || 'Item'}</div>
+                                      <div key={idx} className="mb-2 bg-slate-50 p-2 rounded-lg border border-slate-100 min-w-[200px]">
+                                        <div className="font-bold text-slate-800">{i.config?.cantidad || 1}x {i.mueble?.nombre || 'Mueble'}</div>
+                                        <div className="text-[10px] text-slate-500 mt-1 space-y-0.5 leading-tight">
+                                          <div><span className="font-semibold">Madera:</span> {i.config?.materialNombre || 'N/A'}</div>
+                                          <div><span className="font-semibold">Medidas:</span> {i.config?.ancho}x{i.config?.largo}cm (Prof: {i.config?.profundidad}cm)</div>
+                                          <div><span className="font-semibold">Terminación:</span> {i.config?.acabado?.toUpperCase()} | {i.config?.espesorVisual} ESP.</div>
+                                        </div>
+                                      </div>
                                     ))}
                                   </td>
                                 </tr>
@@ -1125,6 +1164,7 @@ const App = () => {
                       <th className="px-6 py-4"># / Fecha</th>
                       <th className="px-6 py-4">Cliente</th>
                       <th className="px-6 py-4">Asesor</th>
+                      <th className="px-6 py-4">Detalle</th>
                       <th className="px-6 py-4 text-right">Monto</th>
                     </tr>
                   </thead>
@@ -1145,10 +1185,22 @@ const App = () => {
                           <div className="text-xs text-slate-500 capitalize flex items-center gap-1"><Phone size={10} /> {order.cliente?.telefono || '-'} • {order.cliente?.canal || 'WhatsApp'}</div>
                         </td>
                         <td className="px-6 py-4 font-bold text-slate-600">{order.vendedor || '-'}</td>
+                        <td className="px-6 py-4 text-xs text-slate-600">
+                          {order.items?.map((i, idx) => (
+                            <div key={idx} className="mb-2 bg-slate-50 p-2 rounded-lg border border-slate-100 min-w-[200px]">
+                              <div className="font-bold text-slate-800">{i.config?.cantidad || 1}x {i.mueble?.nombre || 'Mueble'}</div>
+                              <div className="text-[10px] text-slate-500 mt-1 space-y-0.5 leading-tight">
+                                <div><span className="font-semibold">Madera:</span> {i.config?.materialNombre || 'N/A'}</div>
+                                <div><span className="font-semibold">Medidas:</span> {i.config?.ancho}x{i.config?.largo}cm (Prof: {i.config?.profundidad}cm)</div>
+                                <div><span className="font-semibold">Terminación:</span> {i.config?.acabado?.toUpperCase()} | {i.config?.espesorVisual} ESP.</div>
+                              </div>
+                            </div>
+                          ))}
+                        </td>
                         <td className="px-6 py-4 text-right font-bold text-[#1C2E20]">${new Intl.NumberFormat('es-AR').format(order.total || 0)}</td>
                       </tr>
                     ))}
-                    {ordersList.length === 0 && <tr><td colSpan="5" className="text-center py-10 text-slate-500 font-medium">No hay pedidos registrados aún.</td></tr>}
+                    {ordersList.length === 0 && <tr><td colSpan="6" className="text-center py-10 text-slate-500 font-medium">No hay pedidos registrados aún.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -1159,6 +1211,7 @@ const App = () => {
     </div>
   );
 
+  /* STREAMING_CHUNK:Render Principal (Cliente Final)... */
   return (
     <>
       <GlobalStyles />
@@ -1184,7 +1237,7 @@ const App = () => {
         {paso > 0 && (
           <header className="sticky top-0 z-20 backdrop-blur-xl bg-white/80 border-b border-[#E0D8CC] py-4 px-6 flex justify-between items-center shadow-sm">
             <div className="flex items-center gap-4">
-              <button onClick={() => setPaso(paso === 4 ? 1 : paso - 1)} className={`p-2 rounded-full hover:bg-slate-100 text-[#36251B] transition-colors`}><ArrowLeft size={20} /></button>
+              <button onClick={handleBack} className={`p-2 rounded-full hover:bg-slate-100 text-[#36251B] transition-colors`}><ArrowLeft size={20} /></button>
               <h1 className="text-lg font-bold tracking-tight text-[#36251B] uppercase">{getHeaderTitle()}</h1>
             </div>
             <div className="flex items-center gap-5">
@@ -1204,9 +1257,9 @@ const App = () => {
               />
               <button onClick={() => setVendedorActual(null)} className="flex items-center gap-2 bg-white/60 hover:bg-white border border-[#E0D8CC] px-4 py-2 rounded-full shadow-sm transition-all group mt-2">
                 <div className="w-6 h-6 rounded-full bg-[#36251B] text-white flex items-center justify-center text-[10px] font-bold overflow-hidden shadow-inner">
-                  {vendedores.find(v => v.nombre === vendedorActual)?.avatarUrl ? <img src={vendedores.find(v => v.nombre === vendedorActual)?.avatarUrl} className="w-full h-full object-cover" /> : vendedorActual?.charAt(0) || 'U'}
+                  {vendedores.find(v => v.nombre === vendedorActual)?.avatarUrl ? <img src={vendedores.find(v => v.nombre === vendedorActual)?.avatarUrl} referrerPolicy="no-referrer" className="w-full h-full object-cover" /> : vendedorActual?.charAt(0) || 'U'}
                 </div>
-                <span className="text-[10px] font-semibold text-[#36251B] tracking-wide group-hover:text-[#1C2E20]">Asesor: {vendedorActual}</span>
+                <span className="text-xs font-semibold text-[#36251B] tracking-wide group-hover:text-[#1C2E20]">{vendedorActual}</span>
                 <RefreshCw size={14} className="text-[#6B635A] group-hover:rotate-180 transition-transform duration-500 ml-1" />
               </button>
             </div>
@@ -1369,18 +1422,18 @@ const App = () => {
                   if (!mInfo) return null;
                   return (
                     <div key={p.matId} className="bg-white border border-[#E0D8CC] rounded-2xl p-4 md:p-6 flex items-center gap-4 md:gap-8 shadow-sm animate-fade-in hover:shadow-md transition-all">
-                      <div className="w-16 h-16 md:w-24 md:h-24 rounded-lg md:rounded-xl overflow-hidden shrink-0 shadow-inner border border-[#F4F1EB]">
+                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg md:rounded-xl overflow-hidden shrink-0 shadow-inner border border-[#F4F1EB]">
                         <img src={mInfo.src} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1">
-                        <div className="text-sm md:text-2xl font-black text-[#36251B] uppercase tracking-wide">{mInfo.nombre}</div>
-                        <div className="text-[10px] md:text-sm text-[#6B635A] uppercase font-semibold mt-1 md:mt-2 tracking-widest flex flex-wrap gap-2 items-center">
+                        <div className="text-sm md:text-xl font-black text-[#36251B] uppercase tracking-wide">{mInfo.nombre}</div>
+                        <div className="text-[10px] md:text-sm text-[#6B635A] uppercase font-semibold mt-1 md:mt-2 tracking-widest flex items-center gap-2 md:gap-3 flex-wrap">
                           <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">CANT: {config.cantidad}</span> <span className="text-[#E0D8CC] hidden md:inline">|</span>
                           <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">{config.acabado}</span> <span className="text-[#E0D8CC] hidden md:inline">|</span>
                           <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">{config.tipoConstruccion === 'maciza' ? `${config.espesorPulgadas}"` : (espesorVisual || 'STD')} ESP.</span>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         <div className="text-xl md:text-3xl font-black text-[#1C2E20]">${new Intl.NumberFormat('es-AR').format(p.precioTotal)}</div>
                       </div>
                     </div>
@@ -1439,11 +1492,11 @@ const App = () => {
                       <div key={item.id} className="bg-white border border-[#E0D8CC] rounded-2xl p-4 md:p-6 shadow-sm relative group hover:shadow-md transition-all">
                         <button onClick={() => setCarrito(carrito.filter(c => c.id !== item.id))} className="absolute top-4 right-4 text-[#9C948A] hover:text-red-500 transition-colors"><Trash2 size={20} /></button>
                         <div className="flex gap-4 md:gap-6 items-center">
-                          <div className="w-16 h-16 md:w-24 md:h-24 rounded-lg overflow-hidden shrink-0 shadow-inner border border-[#F4F1EB]">
+                          <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden shrink-0 shadow-inner border border-[#F4F1EB]">
                             {visual.type === 'img' ? <img src={getDirectDriveUrl(visual.value)} className="w-full h-full object-cover" /> : visual.type === 'css' ? <div className="w-full h-full" style={{ background: visual.value }}></div> : <div className="w-full h-full bg-slate-200 flex items-center justify-center text-2xl">{item.mueble?.imagen || '📦'}</div>}
                           </div>
                           <div className="flex-1 pr-8 md:pr-12">
-                            <h3 className="text-sm md:text-xl font-bold text-[#36251B] uppercase tracking-widest">{item.mueble?.nombre || 'Mueble'} <span className="text-[#A0958A] font-medium text-xs md:text-lg">/ {item.config?.materialNombre || 'Std'}</span></h3>
+                            <h3 className="text-sm md:text-xl font-bold text-[#36251B] uppercase tracking-widest">{item.mueble?.nombre || 'Mueble'} <span className="text-[#A0958A] font-medium text-xs md:text-sm">/ {item.config?.materialNombre || 'Std'}</span></h3>
                             <div className="text-[10px] md:text-xs text-[#6B635A] font-semibold uppercase tracking-widest mt-2 md:mt-3 flex flex-wrap gap-x-2 gap-y-2 md:gap-x-3 items-center">
                               <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">CANT: {item.config?.cantidad || 1}</span> <span className="text-[#E0D8CC] hidden md:inline">|</span>
                               <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">MED: {item.config?.ancho || 0}x{item.config?.largo || 0}cm</span> <span className="text-[#E0D8CC] hidden md:inline">|</span>
@@ -1475,7 +1528,7 @@ const App = () => {
 
                 <div className="bg-white border-y border-[#E0D8CC] py-6 flex justify-between items-center mt-6">
                   <div className="text-xs md:text-sm uppercase font-bold tracking-widest text-[#6B635A]">Total General</div>
-                  <div className="text-3xl md:text-5xl font-black tracking-tight text-[#36251B]">${new Intl.NumberFormat('es-AR').format(carrito.reduce((a, b) => a + (b.precio || 0), 0) + (showEnvio ? Number(config?.envio) || 0 : 0) + (showInstalacion ? Number(config?.instalacion) || 0 : 0))}</div>
+                  <div className="text-3xl md:text-4xl font-black tracking-tight text-[#36251B]">${new Intl.NumberFormat('es-AR').format(carrito.reduce((a, b) => a + (b.precio || 0), 0) + (showEnvio ? Number(config?.envio) || 0 : 0) + (showInstalacion ? Number(config?.instalacion) || 0 : 0))}</div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3 mt-8">
@@ -1494,3 +1547,4 @@ const App = () => {
 };
 
 export default App;
+```eof
