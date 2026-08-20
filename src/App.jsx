@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import {
-  getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, writeBatch, serverTimestamp, getDocs, limit, increment
+  getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, writeBatch, serverTimestamp, getDocs, limit
 } from 'firebase/firestore';
 import {
   Ruler, TreePine, Palette, Send, ShoppingCart, Plus, Trash2, Settings,
@@ -11,7 +11,7 @@ import {
   RectangleVertical, Box, LogOut, Save, Coins, MapPin,
   User, Paperclip, X, Check, Table, DoorOpen, ArrowLeft, Truck, Store, Map as MapIcon, Users,
   Square, Star, MessageCircle, Instagram, Download,
-  BarChart3, Smartphone, Grid, RefreshCw, Phone, Mail, Info, Edit, Bot, LayoutDashboard, ListOrdered, Facebook, Globe
+  BarChart3, Smartphone, Grid, RefreshCw, Phone, Mail, Info, Edit, Bot, LayoutDashboard, ListOrdered
 } from 'lucide-react';
 
 const apiKey = "";
@@ -27,7 +27,7 @@ const userFirebaseConfig = {
 };
 
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userFirebaseConfig;
-const APP_ID_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'ebe-muebles-prod-v11-final';
+const APP_ID_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'ebe-muebles-prod-v12-final';
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -42,6 +42,7 @@ const getDirectDriveUrl = (url) => {
   return url;
 };
 
+// PALETA ESTRICTA: Marrones oscuros, Verdes oscuros.
 const THEME = {
   bg: "bg-[#F4F1EB]",
   card: "bg-white border border-[#E0D8CC] shadow-sm",
@@ -95,14 +96,15 @@ const CATEGORIAS_COSTOS = {
 };
 
 const DEFAULT_MADERAS = [
-  { id: 'kiri', nombre: 'Kiri', tier: 'basica', src: "https://i.postimg.cc/zvnLjGQ1/Kiri-textura.png" },
-  { id: 'paraiso', nombre: 'Paraíso', tier: 'basica', src: "https://i.postimg.cc/J0wDZkpm/Paraiso-textura.png" },
   { id: 'eucalipto', nombre: 'Eucalipto', tier: 'basica', src: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?q=80&w=600&auto=format&fit=crop" },
+  { id: 'kiri', nombre: 'Kiri', tier: 'intermedia', src: "https://i.postimg.cc/zvnLjGQ1/Kiri-textura.png" },
+  { id: 'paraiso', nombre: 'Paraíso', tier: 'intermedia', src: "https://i.postimg.cc/J0wDZkpm/Paraiso-textura.png" },
   { id: 'zoita', nombre: 'Zoita', tier: 'intermedia', src: "https://i.postimg.cc/8chFHzYP/Zoita-textura.png" },
   { id: 'cedro', nombre: 'Cedro', tier: 'intermedia', src: "https://i.postimg.cc/MZRjx9pD/Cedro-textura.png" },
   { id: 'guayubira', nombre: 'Guayubira', tier: 'intermedia', src: "https://i.postimg.cc/1XpgH3d1/Guayubira-textura.png" },
   { id: 'laurel', nombre: 'Laurel', tier: 'intermedia', src: "https://i.postimg.cc/tJh154cy/Laurel-textura.png" },
   { id: 'petiribi', nombre: 'Petiribí', tier: 'premium', src: "https://i.postimg.cc/SQ8zqgxf/Petiribi-textura.png" },
+  { id: 'incienso', nombre: 'Incienso', tier: 'premium', src: "https://images.unsplash.com/photo-1546484396-fb3fc6f95f98?auto=format&fit=crop&q=80&w=600" },
 ];
 
 const DEFAULT_MELAMINAS_DB = [{ id: 'm_blanco', nombre: 'Blanco', css: '#FFFFFF', category: 'lisos' }];
@@ -154,9 +156,9 @@ const GlobalStyles = () => (
     ::-webkit-scrollbar-thumb:hover { background: #36251B; }
     
     /* Maderas grandes en movil y GIGANTES en PC */
-    .swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+    .swatch-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     @media (min-width: 768px) {
-       .swatch-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+       .swatch-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 24px; }
     }
   `}</style>
 );
@@ -167,22 +169,6 @@ const BackgroundAmbience = () => (
     <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-[#1C2E20]/5 blur-3xl" />
   </div>
 );
-
-const getMaterialVisual = (config, maderas, melaminas) => {
-  if (config.tipoConstruccion === 'chapa_inyectada') {
-    const color = COLORES_CHAPA.find(c => c.id === config.chapa_color);
-    return { type: 'css', value: color ? color.css : '#000' };
-  }
-  if (config.tipoConstruccion === 'puerta_placa' || config.tipoConstruccion === 'puerta_enchapada') {
-    return { type: 'img', value: maderas[0]?.src || '' };
-  }
-  if (config.material && config.material.startsWith('m_')) {
-    const melamina = melaminas.find(m => m.id === config.material);
-    return { type: 'css', value: melamina ? melamina.css : '#fff' };
-  }
-  const madera = maderas.find(m => m.id === config.material);
-  return { type: 'img', value: madera ? madera.src : '' };
-};
 
 const Header = React.memo(({ onBack, title, onLogoClick, showCart, cartCount, onCartClick, logoUrl }) => (
   <header className="sticky top-0 z-20 backdrop-blur-xl bg-white/90 border-b border-[#E0D8CC] py-4 px-5 flex justify-between items-center transition-all shadow-sm">
@@ -214,6 +200,22 @@ const IconRenderer = ({ name, size = 24, className }) => {
   return <IconComponent size={size} className={className} />;
 };
 
+const getMaterialVisual = (config, maderas, melaminas) => {
+  if (config?.tipoConstruccion === 'chapa_inyectada') {
+    const color = COLORES_CHAPA.find(c => c.id === config?.chapa_color);
+    return { type: 'css', value: color ? color.css : '#000' };
+  }
+  if (config?.tipoConstruccion === 'puerta_placa' || config?.tipoConstruccion === 'puerta_enchapada') {
+    return { type: 'img', value: maderas[0]?.src || '' };
+  }
+  if (config?.material && config.material.startsWith('m_')) {
+    const melamina = melaminas.find(m => m.id === config.material);
+    return { type: 'css', value: melamina ? melamina.css : '#fff' };
+  }
+  const madera = maderas.find(m => m.id === config?.material);
+  return { type: 'img', value: madera ? madera.src : '' };
+};
+
 const InputMedida = React.memo(({ label, val, onChange }) => (
   <div className="flex flex-col w-full">
     <label className={`text-[10px] font-bold text-[#6B635A] uppercase tracking-wider mb-1.5 block`}>{label}</label>
@@ -239,11 +241,9 @@ const App = () => {
   const [aboutUsImageUrl, setAboutUsImageUrl] = useState('');
   const [pdfLibLoaded, setPdfLibLoaded] = useState(false);
 
-  const [visitStats, setVisitStats] = useState({ mobile: 0, desktop: 0 });
   const [ordersList, setOrdersList] = useState([]);
   const [carrito, setCarrito] = useState([]);
 
-  // Vendedores iniciales solicitados
   const [vendedores, setVendedores] = useState([{ id: 'v1', nombre: 'Emanuel', avatarUrl: '' }, { id: 'v2', nombre: 'Aldana', avatarUrl: '' }, { id: 'v3', nombre: 'Teffi', avatarUrl: '' }]);
   const [vendedorActual, setVendedorActual] = useState(null);
   const [adminSelectedVendor, setAdminSelectedVendor] = useState(null);
@@ -263,7 +263,6 @@ const App = () => {
   const [catSeleccionada, setCatSeleccionada] = useState(null);
   const [muebleSeleccionado, setMuebleSeleccionado] = useState(null);
 
-  // Config State
   const [config, setConfig] = useState({
     ancho: 160, largo: 80, profundidad: 40, cantidad: 1,
     materialesSeleccionados: ['eucalipto'], acabado: 'natural', tipoPatas: 'sin_patas', modeloPatas: 'ninguna',
@@ -274,8 +273,6 @@ const App = () => {
 
   const [cliente, setCliente] = useState({ nombre: '', canal: 'whatsapp', telefono: '' });
   const [checkoutPaso, setCheckoutPaso] = useState('form');
-
-  // Toggles de extras
   const [showEnvio, setShowEnvio] = useState(false);
   const [showInstalacion, setShowInstalacion] = useState(false);
 
@@ -283,9 +280,17 @@ const App = () => {
   const [espesorVisual, setEspesorVisual] = useState('');
   const [materialesPosibles, setMaterialesPosibles] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
-  const [showReviews, setShowReviews] = useState(false);
 
   const isMDF = config.tipoConstruccion === 'placa';
+
+  const getHeaderTitle = useCallback(() => {
+    if (paso === 5) return "Galería";
+    if (paso === 4) return "Tu Pedido";
+    if (paso === 3 && muebleSeleccionado) return muebleSeleccionado.nombre;
+    if (paso === 2 && catSeleccionada) return catSeleccionada.label;
+    if (paso === 1) return "Categorías";
+    return "EBE MUEBLES";
+  }, [paso, muebleSeleccionado, catSeleccionada]);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -354,7 +359,28 @@ const App = () => {
     document.body.appendChild(script);
   }, []);
 
-  const handleAdminLogin = useCallback(() => { setIsAdmin(true); }, []);
+  const handleAdminLogin = useCallback(async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      if (ADMIN_EMAILS.includes(result.user.email)) {
+        setIsAdmin(true);
+      } else {
+        alert("No tienes permisos de administrador con este correo.");
+        await signOut(auth);
+        await signInAnonymously(auth);
+      }
+    } catch (e) {
+      console.error("Error Auth:", e);
+      // Bypass para el entorno de vista previa
+      if (e.code === 'auth/unauthorized-domain' || e.message.includes('unauthorized-domain')) {
+        alert("⚠️ Entorno de prueba detectado: Firebase bloquea este dominio temporal. Te damos acceso directo al panel para que puedas probarlo.");
+        setIsAdmin(true);
+      } else {
+        alert("Error al iniciar sesión: " + e.message);
+      }
+    }
+  }, []);
 
   const handleSaveSettings = useCallback(async () => {
     if (!isAdmin) return;
@@ -412,6 +438,24 @@ const App = () => {
     if (!isAdmin || !newMaterial.nombre) return;
     try { await addDoc(collection(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'materials'), { ...newMaterial, id: `mat_${Date.now()}`, createdAt: Date.now() }); setNewMaterial({ nombre: '', tier: 'basica', src: '' }); } catch (e) { }
   };
+
+  const uploadDefaultMaterials = async () => {
+    if (!isAdmin) return;
+    if (!confirm("Esto sincronizará el catálogo base de maderas a la nube. Si ya tenés otras, se agregarán sin borrarse. ¿Continuar?")) return;
+    try {
+      const batch = writeBatch(db);
+      DEFAULT_MADERAS.forEach((m) => {
+        const ref = doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'materials', m.id);
+        batch.set(ref, { ...m, createdAt: serverTimestamp() }, { merge: true });
+      });
+      await batch.commit();
+      alert("¡Catálogo sincronizado exitosamente!");
+    } catch (e) {
+      console.error(e);
+      alert("Hubo un error al sincronizar.");
+    }
+  };
+
   const deleteMaterial = async (id) => { if (isAdmin) await deleteDoc(doc(db, 'artifacts', APP_ID_FIRESTORE, 'public', 'data', 'materials', id)); };
 
   const updateOrderStatus = async (id, currentStatus) => {
@@ -513,7 +557,7 @@ const App = () => {
           structurePrice = pies * base;
           if (config.tipoPatas === 'metal') structurePrice += costos.patas_metal;
           if (config.tipoPatas === 'madera') structurePrice += costos.patas_madera;
-          if (config.marco) structurePrice += (base * 30); // Contramarco logic is tied here
+          if (config.marco) structurePrice += (base * 30);
           structurePrice += ((Number(config.cantCajones) || 0) * costos.costo_cajon_completo);
           structurePrice += ((Number(config.cantPuertas) || 0) * costos.costo_puerta_mueble);
         }
@@ -540,7 +584,7 @@ const App = () => {
       return {
         id: Date.now() + Math.random(),
         mueble: muebleSeleccionado,
-        config: { ...config, material: p.matId, materialNombre: mat ? mat.nombre : 'Madera', espesorVisual: config.tipoConstruccion === 'maciza' ? `${config.espesorPulgadas}"` : espesorVisual },
+        config: { ...config, material: p.matId, materialNombre: mat?.nombre || 'Madera', espesorVisual: config.tipoConstruccion === 'maciza' ? `${config.espesorPulgadas}"` : espesorVisual },
         precio: p.precioTotal
       };
     });
@@ -550,7 +594,8 @@ const App = () => {
   };
 
   const guardarPresupuestoInterno = async () => {
-    const total = carrito.reduce((a, b) => a + b.precio, 0) + (showEnvio ? Number(config.envio) || 0 : 0) + (showInstalacion ? Number(config.instalacion) || 0 : 0);
+    if (!cliente.nombre || !vendedorActual) return alert("Falta el nombre del cliente o asesor.");
+    const total = carrito.reduce((a, b) => a + (b.precio || 0), 0) + (Number(config.envio) || 0) + (Number(config.instalacion) || 0);
 
     let nextOrderNumber = 1;
     try {
@@ -565,38 +610,27 @@ const App = () => {
         cliente,
         vendedor: vendedorActual,
         items: carrito,
-        extras: { envio: showEnvio ? Number(config.envio) || 0 : 0, instalacion: showInstalacion ? Number(config.instalacion) || 0 : 0 },
+        extras: { envio: Number(config.envio) || 0, instalacion: Number(config.instalacion) || 0 },
         total,
         estado: 'pendiente',
         createdAt: Date.now()
       });
       alert(`Presupuesto #${nextOrderNumber.toString().padStart(4, '0')} Guardado Exitosamente.`);
-      // Limpiamos todo al guardar exitosamente
       setCarrito([]);
       setCliente({ nombre: '', canal: 'whatsapp', telefono: '' });
       setConfig(p => ({ ...p, envio: '', instalacion: '' }));
       setCheckoutPaso('form');
-      setShowExtras(false);
       setShowEnvio(false);
       setShowInstalacion(false);
       setPaso(1);
     } catch (e) { alert("Error al guardar."); }
   };
 
-  const getHeaderTitle = useCallback(() => {
-    if (paso === 5) return "Galería";
-    if (paso === 4) return "Tu Pedido";
-    if (paso === 3 && muebleSeleccionado) return muebleSeleccionado.nombre;
-    if (paso === 2 && catSeleccionada) return catSeleccionada.label;
-    if (paso === 1) return "Categorías";
-    return "EBE MUEBLES";
-  }, [paso, muebleSeleccionado, catSeleccionada]);
-
-  const downloadPDF = () => {
+  const downloadPDF = useCallback(() => {
     if (!pdfLibLoaded) return alert("Cargando generador de PDF, intenta en unos segundos...");
 
     const element = document.createElement('div');
-    const total = carrito.reduce((a, b) => a + b.precio, 0) + (Number(config.envio) || 0) + (Number(config.instalacion) || 0);
+    const total = carrito.reduce((a, b) => a + (b.precio || 0), 0) + (Number(config.envio) || 0) + (Number(config.instalacion) || 0);
     const fecha = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const idPresupuesto = Math.floor(1000 + Math.random() * 9000);
 
@@ -608,14 +642,14 @@ const App = () => {
       } else if (visual.type === 'css') {
         visualHtml = `<span style="display:block;width:50px;height:50px;border-radius:4px;background:${visual.value};margin-right:15px;border:1px solid #ddd;"></span>`;
       } else {
-        visualHtml = `<div style="width:50px;height:50px;border-radius:4px;background:#eee;margin-right:15px;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;font-size:24px">${item.mueble.imagen}</div>`
+        visualHtml = `<div style="width:50px;height:50px;border-radius:4px;background:#eee;margin-right:15px;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;font-size:24px">${item.mueble?.imagen || '📦'}</div>`
       }
 
-      let acabadoLabel = item.config.acabado || 'Natural';
+      let acabadoLabel = item.config?.acabado || 'Natural';
       const lineItems = [
-        { label: 'MATERIAL', value: item.config.materialNombre },
-        { label: 'MEDIDAS', value: `${item.config.ancho}x${item.config.largo}${item.config.profundidad ? `x${item.config.profundidad}` : ''}cm` },
-        { label: 'USO', value: (item.config.uso || 'interior').toUpperCase() },
+        { label: 'MATERIAL', value: item.config?.materialNombre || 'Std' },
+        { label: 'MEDIDAS', value: `${item.config?.ancho || 0}x${item.config?.largo || 0}${item.config?.profundidad ? `x${item.config.profundidad}` : ''}cm` },
+        { label: 'USO', value: (item.config?.uso || 'interior').toUpperCase() },
         { label: 'TERMINACIÓN', value: acabadoLabel.toUpperCase() }
       ];
 
@@ -631,7 +665,7 @@ const App = () => {
              <div style="display:flex; align-items: center;">
                 ${visualHtml}
                 <div>
-                    <strong style="font-size: 14px; display:block; margin-bottom: 6px; text-transform: uppercase; color: #333; font-weight: 900; letter-spacing: 0.5px;">${item.mueble.nombre}</strong>
+                    <strong style="font-size: 14px; display:block; margin-bottom: 6px; text-transform: uppercase; color: #333; font-weight: 900; letter-spacing: 0.5px;">${item.mueble?.nombre || 'Mueble a Medida'}</strong>
                     <div style="line-height: 1.6;">
                        ${detailsHtml}
                     </div>
@@ -639,7 +673,7 @@ const App = () => {
              </div>
           </td>
           <td style="padding: 15px 10px; text-align:right; vertical-align: middle; font-weight: bold; font-size: 14px; color: #333;">
-            $${new Intl.NumberFormat('es-AR').format(item.precio)}
+            $${new Intl.NumberFormat('es-AR').format(item.precio || 0)}
           </td>
         </tr>`;
     }).join('');
@@ -667,7 +701,7 @@ const App = () => {
            <div style="text-align: right; font-size: 11px; color: #555;">
               <div style="margin-bottom: 4px;"><strong style="color: #333; font-weight: 800;">FECHA:</strong> ${fecha}</div>
               <div style="margin-bottom: 4px;"><strong style="color: #333; font-weight: 800;">TEL:</strong> ${cliente.telefono || '-'}</div>
-              <div><strong style="color: #333; font-weight: 800;">UBICACIÓN:</strong> ${cliente.lugar || '-'}</div>
+              <div><strong style="color: #333; font-weight: 800;">ASESOR:</strong> ${vendedorActual || '-'}</div>
            </div>
         </div>
         <table style="width:100%; border-collapse: collapse; margin-bottom:20px;">
@@ -729,10 +763,10 @@ const App = () => {
     };
 
     window.html2pdf().set(opt).from(element).save();
-  };
+  }, [carrito, cliente, config.envio, config.instalacion, vendedorActual, pdfLibLoaded, maderas, melaminas, logoUrl]);
 
   const enviarWhatsapp = useCallback(async () => {
-    const total = carrito.reduce((a, b) => a + b.precio, 0) + (Number(config.envio) || 0) + (Number(config.instalacion) || 0);
+    const total = carrito.reduce((a, b) => a + (b.precio || 0), 0) + (Number(config.envio) || 0) + (Number(config.instalacion) || 0);
     let nextOrderNumber = 1980;
     try {
       const q = query(
@@ -762,17 +796,14 @@ const App = () => {
       });
     } catch (e) { }
 
-    let text = `👋 Hola *eBe Muebles*, soy ${cliente.nombre}.\n📍 Desde: ${cliente.lugar || '-'}\n📋 *PEDIDO WEB #${nextOrderNumber}*\n\n`;
-    carrito.forEach(i => text += `🔹 *${i.mueble.nombre}* \n`);
+    let text = `👋 Hola *eBe Muebles*, soy ${cliente.nombre}.\n📍 Asesor: ${vendedorActual}\n📋 *PEDIDO WEB #${nextOrderNumber}*\n\n`;
+    carrito.forEach(i => text += `🔹 *${i.mueble?.nombre || 'Mueble'}* \n`);
     text += `\n💰 *Total Estimado: $${new Intl.NumberFormat('es-AR').format(total)}*`;
     text += `\n\n(He descargado el PDF del presupuesto)`;
 
     window.open(`https://wa.me/${DATOS_CONTACTO.telefono_whatsapp}?text=${encodeURIComponent(text)}`, '_blank');
     downloadPDF();
-  }, [carrito, cliente, pdfLibLoaded, config.envio, config.instalacion, vendedorActual]);
-
-  const nextImage = useCallback((e) => { e && e.stopPropagation(); setSelectedImage(prev => galeria[(galeria.findIndex(i => i.id === prev.id) + 1) % galeria.length]); }, [galeria]);
-  const prevImage = useCallback((e) => { e && e.stopPropagation(); setSelectedImage(prev => galeria[(galeria.findIndex(i => i.id === prev.id) - 1 + galeria.length) % galeria.length]); }, [galeria]);
+  }, [carrito, cliente, config.envio, config.instalacion, vendedorActual, downloadPDF]);
 
   if (!vendedorActual && !isAdmin) {
     return (
@@ -904,6 +935,7 @@ const App = () => {
                   const byChannelApproved = approvedOrders.reduce((acc, curr) => { acc[curr.cliente?.canal] = (acc[curr.cliente?.canal] || 0) + 1; return acc; }, {});
 
                   const conversionRate = allOrders.length > 0 ? Math.round((approvedOrders.length / allOrders.length) * 100) : 0;
+                  const totalApprovedAmount = approvedOrders.reduce((acc, curr) => acc + (curr.total || 0), 0);
 
                   return (
                     <>
@@ -913,8 +945,13 @@ const App = () => {
                         </div>
                         <div>
                           <h2 className="text-3xl font-bold tracking-tight text-[#36251B]">{v.nombre}</h2>
-                          <div className="text-sm font-bold text-slate-500 uppercase tracking-wider mt-1">Perfil de Asesor</div>
+                          <div className="text-sm font-bold text-emerald-600 uppercase tracking-wider mt-1">{approvedOrders.length} Presupuestos Aprobados</div>
                         </div>
+                      </div>
+
+                      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-8 max-w-sm">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Total Recaudado (Monto Aprobado)</div>
+                        <div className="text-4xl font-bold text-emerald-600">${new Intl.NumberFormat('es-AR').format(totalApprovedAmount)}</div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -967,15 +1004,15 @@ const App = () => {
                                       {order.estado === 'aprobado' ? 'Aprobado' : 'Pendiente'}
                                     </button>
                                   </td>
-                                  <td className="px-6 py-4 font-bold text-[#36251B]">#{order.orderNumber.toString().padStart(4, '0')}</td>
+                                  <td className="px-6 py-4 font-bold text-[#36251B]">#{order.orderNumber?.toString().padStart(4, '0') || '0000'}</td>
                                   <td className="px-6 py-4 text-slate-600 font-medium">{new Date(order.createdAt).toLocaleDateString()}</td>
                                   <td className="px-6 py-4">
                                     <div className="font-bold text-slate-800">{order.cliente?.nombre || 'Sin Nombre'}</div>
                                     <div className="text-xs text-slate-500 capitalize">{order.cliente?.canal || 'whatsapp'}</div>
                                   </td>
                                   <td className="px-6 py-4 text-xs text-slate-600">
-                                    {order.items.map((i, idx) => (
-                                      <div key={idx} className="mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]">• {i.mueble.nombre} ({i.config.materialNombre})</div>
+                                    {order.items?.map((i, idx) => (
+                                      <div key={idx} className="mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]">• {i.mueble?.nombre || 'Item'}</div>
                                     ))}
                                   </td>
                                 </tr>
@@ -1024,6 +1061,7 @@ const App = () => {
           <div className="max-w-5xl mx-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold tracking-tight text-slate-800">Catálogo de Maderas</h2>
+              <button onClick={uploadDefaultMaterials} className="bg-[#1C2E20] text-white px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-[#152418] shadow-sm"><Save size={16} /> Sincronizar Maderas Base</button>
             </div>
 
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-8">
@@ -1099,7 +1137,7 @@ const App = () => {
                           </button>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="font-bold text-[#36251B]">#{order.orderNumber.toString().padStart(4, '0')}</div>
+                          <div className="font-bold text-[#36251B]">#{order.orderNumber?.toString().padStart(4, '0') || '0000'}</div>
                           <div className="text-[10px] font-semibold text-slate-400">{new Date(order.createdAt).toLocaleDateString()}</div>
                         </td>
                         <td className="px-6 py-4">
@@ -1107,7 +1145,7 @@ const App = () => {
                           <div className="text-xs text-slate-500 capitalize flex items-center gap-1"><Phone size={10} /> {order.cliente?.telefono || '-'} • {order.cliente?.canal || 'WhatsApp'}</div>
                         </td>
                         <td className="px-6 py-4 font-bold text-slate-600">{order.vendedor || '-'}</td>
-                        <td className="px-6 py-4 text-right font-bold text-[#1C2E20]">${new Intl.NumberFormat('es-AR').format(order.total)}</td>
+                        <td className="px-6 py-4 text-right font-bold text-[#1C2E20]">${new Intl.NumberFormat('es-AR').format(order.total || 0)}</td>
                       </tr>
                     ))}
                     {ordersList.length === 0 && <tr><td colSpan="5" className="text-center py-10 text-slate-500 font-medium">No hay pedidos registrados aún.</td></tr>}
@@ -1133,7 +1171,6 @@ const App = () => {
         </button>
       )}
 
-      {/* Modal Zoom Madera (Doble Clic) */}
       {selectedImage && (
         <div className="fixed inset-0 z-[60] bg-black/90 flex flex-col items-center justify-center p-6 animate-fade-in" onClick={() => setSelectedImage(null)}>
           <button className="absolute top-6 right-6 text-white/50 hover:text-white"><X size={32} /></button>
@@ -1144,7 +1181,6 @@ const App = () => {
 
       <div className={`min-h-screen font-sans ${THEME.textMain} pb-10`}>
 
-        {/* Header App */}
         {paso > 0 && (
           <header className="sticky top-0 z-20 backdrop-blur-xl bg-white/80 border-b border-[#E0D8CC] py-4 px-6 flex justify-between items-center shadow-sm">
             <div className="flex items-center gap-4">
@@ -1157,7 +1193,6 @@ const App = () => {
           </header>
         )}
 
-        {/* HOME */}
         {paso === 0 && (
           <div className="min-h-screen flex flex-col items-center justify-center p-6 relative">
             <div className="mb-12 text-center relative z-10 flex flex-col items-center">
@@ -1169,9 +1204,9 @@ const App = () => {
               />
               <button onClick={() => setVendedorActual(null)} className="flex items-center gap-2 bg-white/60 hover:bg-white border border-[#E0D8CC] px-4 py-2 rounded-full shadow-sm transition-all group mt-2">
                 <div className="w-6 h-6 rounded-full bg-[#36251B] text-white flex items-center justify-center text-[10px] font-bold overflow-hidden shadow-inner">
-                  {vendedores.find(v => v.nombre === vendedorActual)?.avatarUrl ? <img src={vendedores.find(v => v.nombre === vendedorActual)?.avatarUrl} className="w-full h-full object-cover" /> : vendedorActual.charAt(0)}
+                  {vendedores.find(v => v.nombre === vendedorActual)?.avatarUrl ? <img src={vendedores.find(v => v.nombre === vendedorActual)?.avatarUrl} className="w-full h-full object-cover" /> : vendedorActual?.charAt(0) || 'U'}
                 </div>
-                <span className="text-xs font-semibold text-[#36251B] tracking-wide group-hover:text-[#1C2E20]">{vendedorActual}</span>
+                <span className="text-[10px] font-semibold text-[#36251B] tracking-wide group-hover:text-[#1C2E20]">Asesor: {vendedorActual}</span>
                 <RefreshCw size={14} className="text-[#6B635A] group-hover:rotate-180 transition-transform duration-500 ml-1" />
               </button>
             </div>
@@ -1182,7 +1217,6 @@ const App = () => {
           </div>
         )}
 
-        {/* CATEGORÍAS */}
         {paso === 1 && (
           <div className="flex flex-col justify-center max-w-3xl mx-auto p-6 animate-fade-in">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -1197,7 +1231,6 @@ const App = () => {
           </div>
         )}
 
-        {/* LISTA MOBILIARIO */}
         {paso === 2 && (
           <div className="max-w-2xl mx-auto p-6 space-y-3 animate-fade-in">
             {LISTA_MUEBLES_GRAL.map(item => (
@@ -1212,11 +1245,9 @@ const App = () => {
           </div>
         )}
 
-        {/* CONFIGURADOR */}
         {paso === 3 && (
           <div className="max-w-4xl mx-auto p-6 animate-fade-in space-y-6 pb-32">
 
-            {/* DIMENSIONES Y CANTIDAD (Horizontal Compacto) */}
             <div className="bg-white border border-[#E0D8CC] rounded-2xl p-5 shadow-sm">
               <div className="flex flex-wrap md:flex-nowrap gap-4 items-end">
                 <div className="flex-1 min-w-[80px]"><InputMedida label="Ancho (cm)" val={config.ancho} onChange={v => setConfig({ ...config, ancho: v })} /></div>
@@ -1246,7 +1277,6 @@ const App = () => {
               </div>
             </div>
 
-            {/* ENTORNO Y ACABADOS */}
             <div className="bg-white border border-[#E0D8CC] rounded-2xl p-5 shadow-sm">
               <div className="flex flex-wrap gap-4">
                 {(catSeleccionada?.id === 'cat_mesa' || catSeleccionada?.id === 'cat_puerta' || catSeleccionada?.id === 'cat_tapas' || catSeleccionada?.id === 'cat_escalones') && (
@@ -1304,7 +1334,6 @@ const App = () => {
               )}
             </div>
 
-            {/* CATÁLOGO DE MADERAS */}
             <div>
               <div className={`flex items-center justify-between mb-4`}><div className="flex items-center gap-2 text-[#36251B]"><TreePine size={18} /> <h3 className="text-sm font-bold uppercase tracking-widest">Catálogo de Maderas</h3></div></div>
 
@@ -1333,29 +1362,32 @@ const App = () => {
               </div>
             </div>
 
-            {/* PRECIOS Y AGREGAR MULTIPLE */}
             {preciosMultiples.length > 0 && (
-              <div className="space-y-3 mt-8">
+              <div className="space-y-4 md:space-y-6 mt-10 md:mt-16">
                 {preciosMultiples.map(p => {
                   const mInfo = maderas.find(m => m.id === p.matId);
                   if (!mInfo) return null;
                   return (
-                    <div key={p.matId} className="bg-white border border-[#E0D8CC] rounded-2xl p-4 flex items-center gap-4 shadow-sm animate-fade-in">
-                      <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0 shadow-inner">
+                    <div key={p.matId} className="bg-white border border-[#E0D8CC] rounded-2xl p-4 md:p-6 flex items-center gap-4 md:gap-8 shadow-sm animate-fade-in hover:shadow-md transition-all">
+                      <div className="w-16 h-16 md:w-24 md:h-24 rounded-lg md:rounded-xl overflow-hidden shrink-0 shadow-inner border border-[#F4F1EB]">
                         <img src={mInfo.src} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1">
-                        <div className="text-sm font-bold text-[#36251B] uppercase">{mInfo.nombre}</div>
-                        <div className="text-[10px] text-[#6B635A] uppercase font-semibold mt-0.5 tracking-wide">CANT: {config.cantidad} • {config.acabado} • {config.tipoConstruccion === 'maciza' ? `${config.espesorPulgadas}"` : (espesorVisual || 'STD')} ESP.</div>
+                        <div className="text-sm md:text-2xl font-black text-[#36251B] uppercase tracking-wide">{mInfo.nombre}</div>
+                        <div className="text-[10px] md:text-sm text-[#6B635A] uppercase font-semibold mt-1 md:mt-2 tracking-widest flex flex-wrap gap-2 items-center">
+                          <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">CANT: {config.cantidad}</span> <span className="text-[#E0D8CC] hidden md:inline">|</span>
+                          <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">{config.acabado}</span> <span className="text-[#E0D8CC] hidden md:inline">|</span>
+                          <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">{config.tipoConstruccion === 'maciza' ? `${config.espesorPulgadas}"` : (espesorVisual || 'STD')} ESP.</span>
+                        </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-lg font-bold text-[#1C2E20]">${new Intl.NumberFormat('es-AR').format(p.precioTotal)}</div>
+                        <div className="text-xl md:text-3xl font-black text-[#1C2E20]">${new Intl.NumberFormat('es-AR').format(p.precioTotal)}</div>
                       </div>
                     </div>
                   );
                 })}
-                <div className="flex justify-end">
-                  <button onClick={agregarAlCarrito} className={`w-full md:w-auto px-8 py-3.5 rounded-xl mt-4 font-bold text-sm tracking-widest uppercase transition-all shadow-md bg-[#36251B] text-white hover:bg-[#1F140E]`}>AGREGAR</button>
+                <div className="flex justify-end mt-6">
+                  <button onClick={agregarAlCarrito} className={`w-full md:w-auto px-12 py-4 rounded-xl font-black text-sm md:text-lg tracking-widest uppercase transition-all shadow-lg bg-[#36251B] text-white hover:bg-[#1F140E] hover:scale-[1.02]`}>AGREGAR</button>
                 </div>
               </div>
             )}
@@ -1367,20 +1399,20 @@ const App = () => {
         {paso === 4 && (
           <div className="max-w-3xl mx-auto p-6 animate-fade-in pb-20">
             {checkoutPaso === 'form' ? (
-              <div className="bg-white border border-[#E0D8CC] rounded-2xl p-8 max-w-lg mx-auto shadow-sm">
-                <h3 className="text-center font-bold text-[#36251B] uppercase tracking-widest mb-6">Información del Cliente</h3>
-                <div className="space-y-5">
+              <div className="bg-white border border-[#E0D8CC] rounded-3xl p-8 md:p-12 shadow-sm max-w-2xl mx-auto mt-10 md:mt-20">
+                <h3 className="text-lg md:text-2xl font-black text-[#36251B] uppercase tracking-widest mb-8 text-center">Datos del Cliente</h3>
+                <div className="space-y-6">
                   <div>
-                    <label className="text-[10px] font-bold text-[#6B635A] uppercase mb-1.5 block text-center">Nombre y Apellido *</label>
-                    <input value={cliente.nombre} onChange={e => setCliente({ ...cliente, nombre: e.target.value })} className="w-full bg-[#F4F1EB] border border-[#E0D8CC] p-3 rounded-xl text-center text-sm font-semibold outline-none focus:border-[#36251B]" placeholder="Ej: Juan Perez" />
+                    <label className="text-xs md:text-sm font-bold text-[#6B635A] uppercase mb-2 block text-center">Nombre y Apellido *</label>
+                    <input value={cliente.nombre} onChange={e => setCliente({ ...cliente, nombre: e.target.value })} className="w-full bg-[#F4F1EB] border border-[#E0D8CC] p-4 md:p-5 rounded-xl text-center text-base md:text-lg font-semibold outline-none focus:border-[#36251B]" placeholder="Ej: Juan Perez" />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-[#6B635A] uppercase mb-1.5 block text-center">Teléfono (Opcional)</label>
-                    <input value={cliente.telefono} onChange={e => setCliente({ ...cliente, telefono: e.target.value })} className="w-full bg-[#F4F1EB] border border-[#E0D8CC] p-3 rounded-xl text-center text-sm font-semibold outline-none focus:border-[#36251B]" placeholder="+54 9..." />
+                    <label className="text-xs md:text-sm font-bold text-[#6B635A] uppercase mb-2 block text-center">Teléfono (Opcional)</label>
+                    <input value={cliente.telefono} onChange={e => setCliente({ ...cliente, telefono: e.target.value })} className="w-full bg-[#F4F1EB] border border-[#E0D8CC] p-4 md:p-5 rounded-xl text-center text-base md:text-lg font-semibold outline-none focus:border-[#36251B]" placeholder="+54 9..." />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-[#6B635A] uppercase mb-1.5 block text-center">Medio de Contacto *</label>
-                    <select value={cliente.canal} onChange={e => setCliente({ ...cliente, canal: e.target.value })} className="w-full bg-[#F4F1EB] border border-[#E0D8CC] p-3 rounded-xl text-center text-sm font-semibold outline-none focus:border-[#36251B]">
+                    <label className="text-xs md:text-sm font-bold text-[#6B635A] uppercase mb-2 block text-center">Medio de Contacto *</label>
+                    <select value={cliente.canal} onChange={e => setCliente({ ...cliente, canal: e.target.value })} className="w-full bg-[#F4F1EB] border border-[#E0D8CC] p-4 md:p-5 rounded-xl text-center text-base md:text-lg font-semibold outline-none focus:border-[#36251B]">
                       <option value="whatsapp">WhatsApp</option>
                       <option value="instagram">Instagram</option>
                       <option value="facebook">Facebook</option>
@@ -1389,13 +1421,14 @@ const App = () => {
                       <option value="recomendacion">Recomendación</option>
                     </select>
                   </div>
-                  <button onClick={() => { if (cliente.nombre) setCheckoutPaso('presupuesto'); else alert('Por favor completa el nombre del cliente.'); }} className="w-full bg-[#36251B] text-white py-4 rounded-xl font-bold uppercase tracking-widest mt-6 hover:bg-[#1F140E] transition-colors">Continuar al Presupuesto</button>
+                  <button onClick={() => { if (cliente.nombre) setCheckoutPaso('presupuesto'); else alert('Por favor completa el nombre del cliente.'); }} className="w-full bg-[#36251B] text-white py-5 md:py-6 rounded-xl font-black text-sm md:text-lg uppercase tracking-widest mt-8 hover:bg-[#1F140E] transition-all hover:scale-[1.02] shadow-xl">Continuar al Presupuesto</button>
                 </div>
               </div>
             ) : (
               <div className="animate-fade-in space-y-6">
-                <div className="flex justify-between items-center pb-4 mb-6 border-b border-[#E0D8CC] text-[10px] uppercase tracking-widest font-bold text-[#6B635A]">
+                <div className="flex flex-col md:flex-row justify-between items-center bg-[#F4F1EB] border border-[#E0D8CC] p-4 rounded-xl text-[10px] font-bold uppercase tracking-wider text-[#6B635A]">
                   <span>Asesor: <span className="text-[#36251B] text-xs">{vendedorActual}</span></span>
+                  <span className="hidden md:inline text-[#E0D8CC]">|</span>
                   <span>Cliente: <span className="text-[#36251B] text-xs">{cliente.nombre}</span></span>
                 </div>
 
@@ -1403,23 +1436,23 @@ const App = () => {
                   {carrito.map(item => {
                     const visual = getMaterialVisual(item.config, maderas, melaminas);
                     return (
-                      <div key={item.id} className="bg-white border border-[#E0D8CC] rounded-2xl p-4 shadow-sm relative group">
-                        <button onClick={() => setCarrito(carrito.filter(c => c.id !== item.id))} className="absolute top-4 right-4 text-[#9C948A] hover:text-red-500"><Trash2 size={16} /></button>
-                        <div className="flex gap-4 items-center">
-                          <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 shadow-inner">
-                            {visual.type === 'img' ? <img src={getDirectDriveUrl(visual.value)} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-200 flex items-center justify-center text-xl">{item.mueble.imagen}</div>}
+                      <div key={item.id} className="bg-white border border-[#E0D8CC] rounded-2xl p-4 md:p-6 shadow-sm relative group hover:shadow-md transition-all">
+                        <button onClick={() => setCarrito(carrito.filter(c => c.id !== item.id))} className="absolute top-4 right-4 text-[#9C948A] hover:text-red-500 transition-colors"><Trash2 size={20} /></button>
+                        <div className="flex gap-4 md:gap-6 items-center">
+                          <div className="w-16 h-16 md:w-24 md:h-24 rounded-lg overflow-hidden shrink-0 shadow-inner border border-[#F4F1EB]">
+                            {visual.type === 'img' ? <img src={getDirectDriveUrl(visual.value)} className="w-full h-full object-cover" /> : visual.type === 'css' ? <div className="w-full h-full" style={{ background: visual.value }}></div> : <div className="w-full h-full bg-slate-200 flex items-center justify-center text-2xl">{item.mueble?.imagen || '📦'}</div>}
                           </div>
-                          <div className="flex-1">
-                            <h3 className="text-sm font-bold text-[#36251B] uppercase tracking-widest">{item.mueble.nombre} / {item.config.materialNombre}</h3>
-                            <div className="text-[10px] text-[#6B635A] font-semibold uppercase tracking-wider mt-1.5 flex flex-wrap gap-x-2 gap-y-1">
-                              <span>CANT: {item.config.cantidad || 1}</span> <span className="text-[#E0D8CC]">|</span>
-                              <span>MEDIDAS: {item.config.ancho}x{item.config.largo}cm</span> <span className="text-[#E0D8CC]">|</span>
-                              <span>ESP: {item.config.espesorVisual || 'STD'}</span> <span className="text-[#E0D8CC]">|</span>
-                              <span>TERM: {item.config.acabado}</span>
+                          <div className="flex-1 pr-8 md:pr-12">
+                            <h3 className="text-sm md:text-xl font-bold text-[#36251B] uppercase tracking-widest">{item.mueble?.nombre || 'Mueble'} <span className="text-[#A0958A] font-medium text-xs md:text-lg">/ {item.config?.materialNombre || 'Std'}</span></h3>
+                            <div className="text-[10px] md:text-xs text-[#6B635A] font-semibold uppercase tracking-widest mt-2 md:mt-3 flex flex-wrap gap-x-2 gap-y-2 md:gap-x-3 items-center">
+                              <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">CANT: {item.config?.cantidad || 1}</span> <span className="text-[#E0D8CC] hidden md:inline">|</span>
+                              <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">MED: {item.config?.ancho || 0}x{item.config?.largo || 0}cm</span> <span className="text-[#E0D8CC] hidden md:inline">|</span>
+                              <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">ESP: {item.config?.espesorVisual || 'STD'}</span> <span className="text-[#E0D8CC] hidden md:inline">|</span>
+                              <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">{item.config?.acabado || 'NATURAL'}</span>
                             </div>
                           </div>
-                          <div className="text-right shrink-0 pr-8">
-                            <div className="text-lg font-bold text-[#1C2E20]">${new Intl.NumberFormat('es-AR').format(item.precio)}</div>
+                          <div className="text-right shrink-0">
+                            <div className="text-xl md:text-3xl font-black text-[#1C2E20]">${new Intl.NumberFormat('es-AR').format(item.precio || 0)}</div>
                           </div>
                         </div>
                       </div>
@@ -1429,8 +1462,8 @@ const App = () => {
                 </div>
 
                 <div className="flex gap-4 mb-6">
-                  <button onClick={() => setShowEnvio(!showEnvio)} className={`flex-1 py-3 rounded-xl border text-[10px] font-bold uppercase transition-all ${showEnvio ? 'bg-[#36251B] text-white border-[#36251B]' : 'bg-white border-[#E0D8CC] text-[#6B635A]'}`}>Costo Envío</button>
-                  <button onClick={() => setShowInstalacion(!showInstalacion)} className={`flex-1 py-3 rounded-xl border text-[10px] font-bold uppercase transition-all ${showInstalacion ? 'bg-[#36251B] text-white border-[#36251B]' : 'bg-white border-[#E0D8CC] text-[#6B635A]'}`}>Costo Instalación</button>
+                  <button onClick={() => setShowEnvio(!showEnvio)} className={`flex-1 py-3 rounded-xl border text-[10px] font-bold uppercase transition-all ${showEnvio ? 'bg-[#36251B] text-white border-[#36251B]' : 'bg-white border-[#E0D8CC] text-[#6B635A]'}`}>+ Envío</button>
+                  <button onClick={() => setShowInstalacion(!showInstalacion)} className={`flex-1 py-3 rounded-xl border text-[10px] font-bold uppercase transition-all ${showInstalacion ? 'bg-[#36251B] text-white border-[#36251B]' : 'bg-white border-[#E0D8CC] text-[#6B635A]'}`}>+ Instalación</button>
                 </div>
 
                 {(showEnvio || showInstalacion) && (
@@ -1440,13 +1473,13 @@ const App = () => {
                   </div>
                 )}
 
-                <div className="bg-white border border-[#E0D8CC] p-6 rounded-2xl flex justify-between items-center mt-6">
-                  <div className="text-xs uppercase font-bold tracking-widest text-[#6B635A]">Total General</div>
-                  <div className="text-3xl font-bold tracking-tight text-[#36251B]">${new Intl.NumberFormat('es-AR').format(carrito.reduce((a, b) => a + b.precio, 0) + (showEnvio ? Number(config.envio) || 0 : 0) + (showInstalacion ? Number(config.instalacion) || 0 : 0))}</div>
+                <div className="bg-white border-y border-[#E0D8CC] py-6 flex justify-between items-center mt-6">
+                  <div className="text-xs md:text-sm uppercase font-bold tracking-widest text-[#6B635A]">Total General</div>
+                  <div className="text-3xl md:text-5xl font-black tracking-tight text-[#36251B]">${new Intl.NumberFormat('es-AR').format(carrito.reduce((a, b) => a + (b.precio || 0), 0) + (showEnvio ? Number(config?.envio) || 0 : 0) + (showInstalacion ? Number(config?.instalacion) || 0 : 0))}</div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3 mt-8">
-                  <button onClick={() => downloadPDF(null)} className="bg-white border border-[#E0D8CC] text-[#36251B] py-4 rounded-xl font-bold text-xs uppercase flex flex-col items-center justify-center gap-1 hover:bg-[#F4F1EB] transition-colors"><Download size={18} /> PDF</button>
+                  <button onClick={() => downloadPDF()} className="bg-white border border-[#E0D8CC] text-[#36251B] py-4 rounded-xl font-bold text-xs uppercase flex flex-col items-center justify-center gap-1 hover:bg-[#F4F1EB] transition-colors"><Download size={18} /> PDF</button>
                   <button onClick={enviarWhatsapp} className="bg-[#25D366] text-white py-4 rounded-xl font-bold text-xs uppercase flex flex-col items-center justify-center gap-1 shadow-md hover:bg-[#1DA851] transition-colors"><MessageCircle size={18} /> Enviar</button>
                   <button onClick={guardarPresupuestoInterno} className="bg-[#1C2E20] text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest flex flex-col items-center justify-center gap-1 shadow-md hover:bg-[#152418] transition-colors"><Save size={18} /> Guardar</button>
                 </div>
