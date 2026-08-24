@@ -14,6 +14,7 @@ import {
   BarChart3, Smartphone, Grid, RefreshCw, Phone, Mail, Info, Edit, Bot, LayoutDashboard, ListOrdered
 } from 'lucide-react';
 
+/* STREAMING_CHUNK:Configuracion de Firebase... */
 const apiKey = "";
 
 const userFirebaseConfig = {
@@ -42,7 +43,7 @@ const getDirectDriveUrl = (url) => {
   return url;
 };
 
-// PALETA ESTRICTA: Marrones oscuros, Verdes oscuros.
+/* STREAMING_CHUNK:Configuracion de Diseno Elegante... */
 const THEME = {
   bg: "bg-[#F4F1EB]",
   card: "bg-white border border-[#E0D8CC] shadow-sm",
@@ -144,7 +145,7 @@ const ACABADOS = [{ id: 'natural', nombre: 'NATURAL', price: 0 }, { id: 'cetol',
 const COLORES_CHAPA = [{ id: 'negro', nombre: 'Negro', css: '#1a1a1a' }, { id: 'blanco', nombre: 'Blanco', css: '#f5f5f5' }, { id: 'oxidado', nombre: 'Oxidado', css: 'linear-gradient(45deg, #8B4513, #5D4037)' }];
 const ACABADOS_CHAPA = [{ id: 'mate', nombre: 'Mate' }, { id: 'satinado', nombre: 'Satinado' }, { id: 'brillante', nombre: 'Brill.' }];
 
-/* STREAMING_CHUNK:Componentes Helpers... */
+/* STREAMING_CHUNK:Componentes Helpers y CSS... */
 const GlobalStyles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
@@ -156,7 +157,7 @@ const GlobalStyles = () => (
     ::-webkit-scrollbar-thumb { background: #E0D8CC; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #36251B; }
     
-    /* Maderas en 2 columnas en movil y enormes en PC */
+    /* Maderas grandes en movil y GIGANTES en PC */
     .swatch-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
     @media (min-width: 768px) {
        .swatch-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
@@ -203,7 +204,7 @@ const IconRenderer = ({ name, size = 24, className }) => {
 
 const getMaterialVisual = (config, maderas, melaminas) => {
   if (config?.tipoConstruccion === 'chapa_inyectada') {
-    const color = COLORES_CHAPA.find(c => c.id === config.chapa_color);
+    const color = COLORES_CHAPA.find(c => c.id === config?.chapa_color);
     return { type: 'css', value: color ? color.css : '#000' };
   }
   if (config?.tipoConstruccion === 'puerta_placa' || config?.tipoConstruccion === 'puerta_enchapada') {
@@ -227,7 +228,7 @@ const InputMedida = React.memo(({ label, val, onChange }) => (
   </div>
 ));
 
-/* STREAMING_CHUNK:App Principal y Estados... */
+/* STREAMING_CHUNK:App Principal y Estados Base... */
 const App = () => {
   const [paso, setPaso] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -265,20 +266,20 @@ const App = () => {
   const [catSeleccionada, setCatSeleccionada] = useState(null);
   const [muebleSeleccionado, setMuebleSeleccionado] = useState(null);
 
-  // Config State (materialesSeleccionados arranca VACÍO)
+  // Config State - Vacio al iniciar
   const [config, setConfig] = useState({
     ancho: 160, largo: 80, profundidad: 40, cantidad: 1,
     materialesSeleccionados: [],
     acabado: 'natural', tipoPatas: 'sin_patas', modeloPatas: 'ninguna',
     marco: false, cantCajones: 0, cantPuertas: 0, uso: 'interior', tipoConstruccion: 'maciza',
     chapa_color: 'negro', chapa_acabado: 'satinado', espesorPulgadas: 1.5,
-    envio: '', instalacion: ''
   });
 
   const [cliente, setCliente] = useState({ nombre: '', canal: 'whatsapp', telefono: '' });
   const [checkoutPaso, setCheckoutPaso] = useState('form');
   const [showEnvio, setShowEnvio] = useState(false);
   const [showInstalacion, setShowInstalacion] = useState(false);
+  const [extras, setExtras] = useState({ envio: '', instalacion: '' });
 
   const [preciosMultiples, setPreciosMultiples] = useState([]);
   const [espesorVisual, setEspesorVisual] = useState('');
@@ -287,6 +288,7 @@ const App = () => {
 
   const isMDF = config.tipoConstruccion === 'placa';
 
+  /* STREAMING_CHUNK:Efectos de Autenticacion e Inicializacion... */
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -354,7 +356,7 @@ const App = () => {
     document.body.appendChild(script);
   }, []);
 
-  /* STREAMING_CHUNK:Funciones Admin y Firebase... */
+  /* STREAMING_CHUNK:Funciones del Administrador... */
   const handleAdminLogin = useCallback(async () => {
     const provider = new GoogleAuthProvider();
     try {
@@ -454,7 +456,7 @@ const App = () => {
     }
   };
 
-  /* STREAMING_CHUNK:Calculos y Precios... */
+  /* STREAMING_CHUNK:Calculos y Precios Dinamicos... */
   useEffect(() => {
     if (paso === 3 && muebleSeleccionado) {
       const isMaciza = muebleSeleccionado.id?.includes('mesa') || muebleSeleccionado.id?.includes('puerta') || muebleSeleccionado.id?.includes('tapa') || muebleSeleccionado.id?.includes('escalon');
@@ -568,7 +570,7 @@ const App = () => {
     }
   }, [config, muebleSeleccionado, paso, costos, maderas, catSeleccionada]);
 
-  /* STREAMING_CHUNK:Funciones del Carrito... */
+  /* STREAMING_CHUNK:Navegacion, Guardado y Funciones Finales... */
   const handleBack = useCallback(() => {
     if (paso === 4) {
       setCheckoutPaso('form');
@@ -614,7 +616,10 @@ const App = () => {
 
   const guardarPresupuestoInterno = async () => {
     if (!cliente.nombre || !vendedorActual) return alert("Falta el nombre del cliente o asesor.");
-    const total = carrito.reduce((a, b) => a + (b.precio || 0), 0) + (Number(config.envio) || 0) + (Number(config.instalacion) || 0);
+
+    const costoEnvio = showEnvio ? (Number(extras.envio) || 0) : 0;
+    const costoInstalacion = showInstalacion ? (Number(extras.instalacion) || 0) : 0;
+    const total = carrito.reduce((a, b) => a + (b.precio || 0), 0) + costoEnvio + costoInstalacion;
 
     let nextOrderNumber = 1;
     try {
@@ -629,7 +634,7 @@ const App = () => {
         cliente,
         vendedor: vendedorActual,
         items: carrito,
-        extras: { envio: Number(config.envio) || 0, instalacion: Number(config.instalacion) || 0 },
+        extras: { envio: costoEnvio, instalacion: costoInstalacion },
         total,
         estado: 'pendiente',
         createdAt: Date.now()
@@ -637,7 +642,7 @@ const App = () => {
       alert(`Presupuesto #${nextOrderNumber.toString().padStart(4, '0')} Guardado Exitosamente.`);
       setCarrito([]);
       setCliente({ nombre: '', canal: 'whatsapp', telefono: '' });
-      setConfig(p => ({ ...p, envio: '', instalacion: '' }));
+      setExtras({ envio: '', instalacion: '' });
       setCheckoutPaso('form');
       setShowEnvio(false);
       setShowInstalacion(false);
@@ -650,13 +655,16 @@ const App = () => {
   const downloadPDF = useCallback(() => {
     if (!pdfLibLoaded) return alert("Cargando generador de PDF, intenta en unos segundos...");
 
-    const element = document.createElement('div');
-    const total = carrito.reduce((a, b) => a + (b.precio || 0), 0) + (Number(config.envio) || 0) + (Number(config.instalacion) || 0);
+    const costoEnvio = showEnvio ? (Number(extras.envio) || 0) : 0;
+    const costoInstalacion = showInstalacion ? (Number(extras.instalacion) || 0) : 0;
+    const total = carrito.reduce((a, b) => a + (b.precio || 0), 0) + costoEnvio + costoInstalacion;
     const fecha = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const idPresupuesto = Math.floor(1000 + Math.random() * 9000);
 
     const itemsHtml = carrito.map(item => {
       const visual = getMaterialVisual(item.config, maderas, melaminas);
+      const isPuertaPdf = item.mueble?.id?.includes('puerta') || item.config?.tipoConstruccion === 'chapa_inyectada';
+
       let visualHtml = '';
       if (visual.type === 'img' && visual.value) {
         visualHtml = `<img src="${getDirectDriveUrl(visual.value)}" style="width:50px;height:50px;border-radius:4px;object-fit:cover;border:1px solid #ddd;display:block;margin-right:15px;">`;
@@ -669,8 +677,8 @@ const App = () => {
       let acabadoLabel = item.config?.acabado || 'Natural';
       const lineItems = [
         { label: 'MATERIAL', value: item.config?.materialNombre || 'Std' },
-        { label: 'MEDIDAS', value: `${item.config?.ancho || 0}x${item.config?.largo || 0}${item.config?.profundidad ? `x${item.config.profundidad}` : ''}cm` },
-        { label: 'USO', value: (item.config?.uso || 'interior').toUpperCase() },
+        { label: 'MEDIDAS', value: `${item.config?.ancho || 0} x ${item.config?.largo || 0} cm` },
+        { label: isPuertaPdf ? 'UBICACIÓN' : 'ESPESOR', value: isPuertaPdf ? (item.config?.uso || 'INTERIOR').toUpperCase() : (item.config?.tipoConstruccion === 'maciza' ? `${item.config?.espesorPulgadas}"` : (item.config?.espesorVisual || 'STD')) },
         { label: 'TERMINACIÓN', value: acabadoLabel.toUpperCase() }
       ];
 
@@ -738,11 +746,11 @@ const App = () => {
            <div style="width: 320px;">
               <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: #666; padding-bottom: 8px; border-bottom: 1px solid #eee;">
                  <span style="font-weight: 600;">ENVÍO</span>
-                 <span>${config.envio ? `$${config.envio}` : 'A Cotizar'}</span>
+                 <span>${costoEnvio > 0 ? `$${new Intl.NumberFormat('es-AR').format(costoEnvio)}` : 'A Cotizar'}</span>
               </div>
               <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 12px; color: #666; padding-bottom: 8px; border-bottom: 1px solid #eee;">
                  <span style="font-weight: 600;">INSTALACIÓN</span>
-                 <span>${config.instalacion ? `$${config.instalacion}` : 'A Cotizar'}</span>
+                 <span>${costoInstalacion > 0 ? `$${new Intl.NumberFormat('es-AR').format(costoInstalacion)}` : 'A Cotizar'}</span>
               </div>
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                  <span style="font-weight: 900; font-size: 22px; color: #333; text-transform: uppercase;">TOTAL</span>
@@ -784,10 +792,12 @@ const App = () => {
     };
 
     window.html2pdf().set(opt).from(element).save();
-  }, [carrito, cliente, config.envio, config.instalacion, vendedorActual, pdfLibLoaded, maderas, melaminas, logoUrl]);
+  }, [carrito, cliente, showEnvio, showInstalacion, extras, vendedorActual, pdfLibLoaded, maderas, melaminas, logoUrl]);
 
   const enviarWhatsapp = useCallback(async () => {
-    const total = carrito.reduce((a, b) => a + (b.precio || 0), 0) + (Number(config.envio) || 0) + (Number(config.instalacion) || 0);
+    const costoEnvio = showEnvio ? (Number(extras.envio) || 0) : 0;
+    const costoInstalacion = showInstalacion ? (Number(extras.instalacion) || 0) : 0;
+    const total = carrito.reduce((a, b) => a + (b.precio || 0), 0) + costoEnvio + costoInstalacion;
     let nextOrderNumber = 1980;
     try {
       const q = query(
@@ -810,7 +820,7 @@ const App = () => {
         cliente,
         vendedor: vendedorActual,
         items: carrito,
-        extras: { envio: Number(config.envio) || 0, instalacion: Number(config.instalacion) || 0 },
+        extras: { envio: costoEnvio, instalacion: costoInstalacion },
         total,
         estado: 'pendiente',
         createdAt: Date.now()
@@ -819,14 +829,15 @@ const App = () => {
 
     let text = `👋 Hola *eBe Muebles*, soy ${cliente.nombre}.\n📍 Asesor: ${vendedorActual}\n📋 *PEDIDO WEB #${nextOrderNumber}*\n\n`;
     carrito.forEach(i => text += `🔹 *${i.mueble?.nombre || 'Mueble'}* \n`);
+    if (costoEnvio > 0) text += `🔹 *Envío: $${new Intl.NumberFormat('es-AR').format(costoEnvio)}* \n`;
+    if (costoInstalacion > 0) text += `🔹 *Instalación: $${new Intl.NumberFormat('es-AR').format(costoInstalacion)}* \n`;
     text += `\n💰 *Total Estimado: $${new Intl.NumberFormat('es-AR').format(total)}*`;
     text += `\n\n(He descargado el PDF del presupuesto)`;
 
     window.open(`https://wa.me/${DATOS_CONTACTO.telefono_whatsapp}?text=${encodeURIComponent(text)}`, '_blank');
     downloadPDF();
-  }, [carrito, cliente, config.envio, config.instalacion, vendedorActual, downloadPDF]);
+  }, [carrito, cliente, showEnvio, showInstalacion, extras, vendedorActual, downloadPDF]);
 
-  /* STREAMING_CHUNK:Render Principal Vendedores... */
   const getHeaderTitle = useCallback(() => {
     if (paso === 5) return "Galería";
     if (paso === 4) return "Tu Pedido";
@@ -836,6 +847,7 @@ const App = () => {
     return "EBE MUEBLES";
   }, [paso, muebleSeleccionado, catSeleccionada]);
 
+  /* STREAMING_CHUNK:Pantalla Vendedores... */
   if (!vendedorActual && !isAdmin) {
     return (
       <div className={`min-h-screen ${THEME.bg} flex items-center justify-center p-6 font-sans`}>
@@ -857,7 +869,7 @@ const App = () => {
     );
   }
 
-  /* STREAMING_CHUNK:Render Admin Panel... */
+  /* STREAMING_CHUNK:Pantalla Admin... */
   if (isAdmin) return (
     <div className={`min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col`}>
       <div className="bg-white border-b border-slate-200 sticky top-0 z-30 px-6 py-4 flex items-center justify-between shadow-sm">
@@ -879,7 +891,6 @@ const App = () => {
         <button onClick={() => { setIsAdmin(false); setVendedorActual(null); }} className="text-slate-400 hover:text-red-500 font-bold text-sm flex items-center gap-2"><LogOut size={18} /> Salir</button>
       </div>
 
-      {/* Mobile Menu */}
       <div className="md:hidden bg-white border-b border-slate-200 p-2 flex overflow-x-auto gap-2 no-scrollbar">
         {[{ id: 'dashboard', label: 'Asesores' }, { id: 'orders', label: 'Pedidos' }, { id: 'prices', label: 'Costos' }, { id: 'materials', label: 'Maderas' }].map(i => (
           <button key={i.id} onClick={() => setAdminTab(i.id)} className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap ${adminTab === i.id ? 'bg-[#36251B] text-white' : 'bg-slate-100 text-slate-600'}`}>{i.label}</button>
@@ -1026,6 +1037,7 @@ const App = () => {
                                 <th className="px-6 py-4">Fecha</th>
                                 <th className="px-6 py-4">Cliente</th>
                                 <th className="px-6 py-4">Detalle</th>
+                                <th className="px-6 py-4 text-right">Monto</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -1042,21 +1054,26 @@ const App = () => {
                                     <div className="font-bold text-slate-800">{order.cliente?.nombre || 'Sin Nombre'}</div>
                                     <div className="text-xs text-slate-500 capitalize">{order.cliente?.canal || 'whatsapp'}</div>
                                   </td>
-                                  <td className="px-6 py-4 text-xs text-slate-600">
-                                    {order.items?.map((i, idx) => (
-                                      <div key={idx} className="mb-2 bg-slate-50 p-2 rounded-lg border border-slate-100 min-w-[200px]">
-                                        <div className="font-bold text-slate-800">{i.config?.cantidad || 1}x {i.mueble?.nombre || 'Mueble'}</div>
-                                        <div className="text-[10px] text-slate-500 mt-1 space-y-0.5 leading-tight">
-                                          <div><span className="font-semibold">Madera:</span> {i.config?.materialNombre || 'N/A'}</div>
-                                          <div><span className="font-semibold">Medidas:</span> {i.config?.ancho}x{i.config?.largo}cm (Prof: {i.config?.profundidad}cm)</div>
-                                          <div><span className="font-semibold">Terminación:</span> {i.config?.acabado?.toUpperCase()} | {i.config?.espesorVisual} ESP.</div>
+                                  <td className="px-6 py-4 text-[11px] text-slate-600">
+                                    {order.items?.map((i, idx) => {
+                                      const isMesaAdmin = i.mueble?.id === 'mesa_custom';
+                                      const isPuertaAdmin = i.mueble?.id?.includes('puerta') || i.config?.tipoConstruccion === 'chapa_inyectada';
+                                      return (
+                                        <div key={idx} className="mb-2 bg-slate-50 p-2 rounded-lg border border-slate-100 min-w-[250px]">
+                                          <div className="font-bold text-slate-800">{i.config?.cantidad || 1}x {i.mueble?.nombre || 'Mueble'} <span className="text-slate-500 font-normal">/ {i.config?.materialNombre || 'Std'}</span></div>
+                                          <div className="text-[10px] text-slate-500 mt-1 uppercase tracking-wide">
+                                            Medidas: {i.config?.ancho} x {i.config?.largo} cm | {isPuertaAdmin ? 'Ubicación' : 'Espesor'}: {isPuertaAdmin ? (i.config?.uso || 'INTERIOR') : (i.config?.espesorVisual || 'STD')} | Terminación: {i.config?.acabado}
+                                            {isMesaAdmin && i.config?.tipoPatas && i.config.tipoPatas !== 'sin_patas' ? ` | Patas: ${i.config.tipoPatas.replace('_', ' ')}` : ''}
+                                            {isPuertaAdmin && i.config?.marco ? ` | C/ MARCO` : ''}
+                                          </div>
                                         </div>
-                                      </div>
-                                    ))}
+                                      )
+                                    })}
                                   </td>
+                                  <td className="px-6 py-4 text-right font-bold text-[#1C2E20]">${new Intl.NumberFormat('es-AR').format(order.total || 0)}</td>
                                 </tr>
                               ))}
-                              {allOrders.length === 0 && <tr><td colSpan="5" className="text-center py-10 text-slate-500">Sin operaciones registradas.</td></tr>}
+                              {allOrders.length === 0 && <tr><td colSpan="6" className="text-center py-10 text-slate-500">Sin operaciones registradas.</td></tr>}
                             </tbody>
                           </table>
                         </div>
@@ -1152,66 +1169,11 @@ const App = () => {
           </div>
         )}
 
-        {adminTab === 'orders' && (
-          <div className="max-w-6xl mx-auto space-y-6">
-            <h2 className="text-2xl font-bold tracking-tight text-slate-800">Control de Pedidos</h2>
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
-                    <tr>
-                      <th className="px-6 py-4">Estado</th>
-                      <th className="px-6 py-4"># / Fecha</th>
-                      <th className="px-6 py-4">Cliente</th>
-                      <th className="px-6 py-4">Asesor</th>
-                      <th className="px-6 py-4">Detalle</th>
-                      <th className="px-6 py-4 text-right">Monto</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {ordersList.map(order => (
-                      <tr key={order.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <button onClick={() => updateOrderStatus(order.id, order.estado)} className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors border ${order.estado === 'aprobado' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'}`}>
-                            {order.estado === 'aprobado' ? 'Aprobado' : 'Pendiente'}
-                          </button>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="font-bold text-[#36251B]">#{order.orderNumber?.toString().padStart(4, '0') || '0000'}</div>
-                          <div className="text-[10px] font-semibold text-slate-400">{new Date(order.createdAt).toLocaleDateString()}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="font-bold text-slate-800">{order.cliente?.nombre || 'Sin Nombre'}</div>
-                          <div className="text-xs text-slate-500 capitalize flex items-center gap-1"><Phone size={10} /> {order.cliente?.telefono || '-'} • {order.cliente?.canal || 'WhatsApp'}</div>
-                        </td>
-                        <td className="px-6 py-4 font-bold text-slate-600">{order.vendedor || '-'}</td>
-                        <td className="px-6 py-4 text-xs text-slate-600">
-                          {order.items?.map((i, idx) => (
-                            <div key={idx} className="mb-2 bg-slate-50 p-2 rounded-lg border border-slate-100 min-w-[200px]">
-                              <div className="font-bold text-slate-800">{i.config?.cantidad || 1}x {i.mueble?.nombre || 'Mueble'}</div>
-                              <div className="text-[10px] text-slate-500 mt-1 space-y-0.5 leading-tight">
-                                <div><span className="font-semibold">Madera:</span> {i.config?.materialNombre || 'N/A'}</div>
-                                <div><span className="font-semibold">Medidas:</span> {i.config?.ancho}x{i.config?.largo}cm (Prof: {i.config?.profundidad}cm)</div>
-                                <div><span className="font-semibold">Terminación:</span> {i.config?.acabado?.toUpperCase()} | {i.config?.espesorVisual} ESP.</div>
-                              </div>
-                            </div>
-                          ))}
-                        </td>
-                        <td className="px-6 py-4 text-right font-bold text-[#1C2E20]">${new Intl.NumberFormat('es-AR').format(order.total || 0)}</td>
-                      </tr>
-                    ))}
-                    {ordersList.length === 0 && <tr><td colSpan="6" className="text-center py-10 text-slate-500 font-medium">No hay pedidos registrados aún.</td></tr>}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
 
-  /* STREAMING_CHUNK:Render Principal (Cliente Final)... */
+  /* STREAMING_CHUNK:Render Principal Frontend del Usuario Final... */
   return (
     <>
       <GlobalStyles />
@@ -1310,14 +1272,18 @@ const App = () => {
                   <div className="flex-1 min-w-[80px]"><InputMedida label="Prof. (cm)" val={config.profundidad} onChange={v => setConfig({ ...config, profundidad: v })} /></div>
                 )}
 
-                {(config.tipoConstruccion === 'maciza') ? (
-                  <div className="flex-1 min-w-[100px]"><label className="text-[10px] font-bold text-[#6B635A] uppercase tracking-wider mb-1.5 block">Espesor</label>
-                    <select value={config.espesorPulgadas} onChange={e => setConfig({ ...config, espesorPulgadas: Number(e.target.value) })} className="w-full bg-[#F4F1EB] border border-[#E0D8CC] p-3 rounded-xl text-center font-bold text-[#36251B] focus:border-[#36251B] outline-none appearance-none">
-                      <option value={1}>1"</option><option value={1.5}>1 ½"</option><option value={2}>2"</option>
-                    </select>
-                  </div>
-                ) : (
-                  <div className="flex-1 min-w-[100px] opacity-60"><label className="text-[10px] font-bold text-[#6B635A] uppercase tracking-wider mb-1.5 block">Espesor</label><div className="w-full bg-[#F4F1EB] border border-[#E0D8CC] p-3 rounded-xl text-center font-bold text-[#36251B]">{espesorVisual}</div></div>
+                {(!muebleSeleccionado?.id?.includes('puerta') && config.tipoConstruccion !== 'chapa_inyectada') && (
+                  <>
+                    {(config.tipoConstruccion === 'maciza') ? (
+                      <div className="flex-1 min-w-[100px]"><label className="text-[10px] font-bold text-[#6B635A] uppercase tracking-wider mb-1.5 block">Espesor</label>
+                        <select value={config.espesorPulgadas} onChange={e => setConfig({ ...config, espesorPulgadas: Number(e.target.value) })} className="w-full bg-[#F4F1EB] border border-[#E0D8CC] p-3 rounded-xl text-center font-bold text-[#36251B] focus:border-[#36251B] outline-none appearance-none">
+                          <option value={1}>1"</option><option value={1.5}>1 ½"</option><option value={2}>2"</option>
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="flex-1 min-w-[100px] opacity-60"><label className="text-[10px] font-bold text-[#6B635A] uppercase tracking-wider mb-1.5 block">Espesor</label><div className="w-full bg-[#F4F1EB] border border-[#E0D8CC] p-3 rounded-xl text-center font-bold text-[#36251B]">{espesorVisual}</div></div>
+                    )}
+                  </>
                 )}
 
                 <div className="flex-1 min-w-[120px]"><label className="text-[10px] font-bold text-[#6B635A] uppercase tracking-wider mb-1.5 block">Cantidad</label>
@@ -1416,31 +1382,38 @@ const App = () => {
             </div>
 
             {preciosMultiples.length > 0 && (
-              <div className="space-y-4 md:space-y-6 mt-10 md:mt-16">
+              <div className="space-y-4 md:space-y-4 mt-8 md:mt-12 max-w-2xl mx-auto">
                 {preciosMultiples.map(p => {
                   const mInfo = maderas.find(m => m.id === p.matId);
                   if (!mInfo) return null;
+
+                  const isMesaP3 = muebleSeleccionado?.id === 'mesa_custom';
+                  const isPuertaP3 = muebleSeleccionado?.id?.includes('puerta') || config.tipoConstruccion === 'chapa_inyectada';
+
                   return (
-                    <div key={p.matId} className="bg-white border border-[#E0D8CC] rounded-2xl p-4 md:p-6 flex items-center gap-4 md:gap-8 shadow-sm animate-fade-in hover:shadow-md transition-all">
-                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg md:rounded-xl overflow-hidden shrink-0 shadow-inner border border-[#F4F1EB]">
+                    <div key={p.matId} className="bg-white border border-[#E0D8CC] rounded-xl p-4 flex items-center gap-4 shadow-sm animate-fade-in hover:shadow-md transition-all">
+                      <div className="w-14 h-14 md:w-16 md:h-16 rounded-lg overflow-hidden shrink-0 shadow-inner border border-[#F4F1EB]">
                         <img src={mInfo.src} className="w-full h-full object-cover" />
                       </div>
-                      <div className="flex-1">
-                        <div className="text-sm md:text-xl font-black text-[#36251B] uppercase tracking-wide">{mInfo.nombre}</div>
-                        <div className="text-[10px] md:text-sm text-[#6B635A] uppercase font-semibold mt-1 md:mt-2 tracking-widest flex items-center gap-2 md:gap-3 flex-wrap">
-                          <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">CANT: {config.cantidad}</span> <span className="text-[#E0D8CC] hidden md:inline">|</span>
-                          <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">{config.acabado}</span> <span className="text-[#E0D8CC] hidden md:inline">|</span>
-                          <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">{config.tipoConstruccion === 'maciza' ? `${config.espesorPulgadas}"` : (espesorVisual || 'STD')} ESP.</span>
+                      <div className="flex-1 pr-2">
+                        <div className="text-sm md:text-lg font-bold text-[#36251B] uppercase tracking-wide">{mInfo.nombre}</div>
+                        <div className="text-[10px] md:text-[11px] text-[#6B635A] uppercase tracking-wider mt-1 font-semibold leading-relaxed">
+                          CANTIDAD: {config.cantidad} <span className="text-[#D0C8BC] mx-1.5">|</span>
+                          MEDIDAS: {config.ancho} x {config.largo} cm <span className="text-[#D0C8BC] mx-1.5">|</span>
+                          {isPuertaP3 ? `UBICACIÓN: ${config.uso.toUpperCase()}` : `ESPESOR: ${config.tipoConstruccion === 'maciza' ? `${config.espesorPulgadas}"` : (espesorVisual || 'STD')}`} <span className="text-[#D0C8BC] mx-1.5">|</span>
+                          TERMINACIÓN: {config.acabado}
+                          {isMesaP3 && config.tipoPatas !== 'sin_patas' && <><span className="text-[#D0C8BC] mx-1.5">|</span> PATAS: {config.tipoPatas.replace('_', ' ')}</>}
+                          {isPuertaP3 && config.marco && <><span className="text-[#D0C8BC] mx-1.5">|</span> CON MARCO</>}
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <div className="text-xl md:text-3xl font-black text-[#1C2E20]">${new Intl.NumberFormat('es-AR').format(p.precioTotal)}</div>
+                      <div className="text-right">
+                        <div className="text-lg md:text-xl font-bold text-[#1C2E20]">${new Intl.NumberFormat('es-AR').format(p.precioTotal)}</div>
                       </div>
                     </div>
                   );
                 })}
-                <div className="flex justify-end mt-6">
-                  <button onClick={agregarAlCarrito} className={`w-full md:w-auto px-12 py-4 rounded-xl font-black text-sm md:text-lg tracking-widest uppercase transition-all shadow-lg bg-[#36251B] text-white hover:bg-[#1F140E] hover:scale-[1.02]`}>AGREGAR</button>
+                <div className="flex justify-end mt-4">
+                  <button onClick={agregarAlCarrito} className={`w-full md:w-auto px-10 py-3.5 rounded-xl font-bold text-sm tracking-widest uppercase transition-all shadow-md bg-[#36251B] text-white hover:bg-[#1F140E]`}>AGREGAR</button>
                 </div>
               </div>
             )}
@@ -1448,9 +1421,9 @@ const App = () => {
           </div>
         )}
 
-        {/* CARRITO Y CHECKOUT */}
+        {/* CARRITO Y CHECKOUT FINAL */}
         {paso === 4 && (
-          <div className="max-w-3xl mx-auto p-6 animate-fade-in pb-20">
+          <div className="max-w-3xl mx-auto p-4 md:p-6 animate-fade-in pb-20">
             {checkoutPaso === 'form' ? (
               <div className="bg-white border border-[#E0D8CC] rounded-3xl p-8 md:p-12 shadow-sm max-w-2xl mx-auto mt-10 md:mt-20">
                 <h3 className="text-lg md:text-2xl font-black text-[#36251B] uppercase tracking-widest mb-8 text-center">Datos del Cliente</h3>
@@ -1478,35 +1451,38 @@ const App = () => {
                 </div>
               </div>
             ) : (
-              <div className="animate-fade-in space-y-6">
-                <div className="flex flex-col md:flex-row justify-between items-center bg-[#F4F1EB] border border-[#E0D8CC] p-4 rounded-xl text-[10px] font-bold uppercase tracking-wider text-[#6B635A]">
-                  <span>Asesor: <span className="text-[#36251B] text-xs">{vendedorActual}</span></span>
-                  <span className="hidden md:inline text-[#E0D8CC]">|</span>
-                  <span>Cliente: <span className="text-[#36251B] text-xs">{cliente.nombre}</span></span>
+              <div className="animate-fade-in space-y-4">
+                <div className="flex items-center justify-center gap-3 pb-4 mb-6 border-b border-[#E0D8CC] text-[10px] md:text-xs uppercase tracking-widest font-semibold text-[#6B635A]">
+                  <span>Asesor: <strong className="text-[#36251B] ml-1">{vendedorActual}</strong></span>
+                  <span className="opacity-40 text-[#D0C8BC]">|</span>
+                  <span>Cliente: <strong className="text-[#36251B] ml-1">{cliente.nombre}</strong></span>
                 </div>
 
-                <div className="space-y-4 mb-8">
+                <div className="space-y-4 mb-10 max-w-2xl mx-auto">
                   {carrito.map(item => {
                     const visual = getMaterialVisual(item.config, maderas, melaminas);
+                    const isMesaP4 = item.mueble?.id === 'mesa_custom';
+                    const isPuertaP4 = item.mueble?.id?.includes('puerta') || item.config?.tipoConstruccion === 'chapa_inyectada';
+
                     return (
-                      <div key={item.id} className="bg-white border border-[#E0D8CC] rounded-2xl p-4 md:p-6 shadow-sm relative group hover:shadow-md transition-all">
-                        <button onClick={() => setCarrito(carrito.filter(c => c.id !== item.id))} className="absolute top-4 right-4 text-[#9C948A] hover:text-red-500 transition-colors"><Trash2 size={20} /></button>
-                        <div className="flex gap-4 md:gap-6 items-center">
-                          <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden shrink-0 shadow-inner border border-[#F4F1EB]">
-                            {visual.type === 'img' ? <img src={getDirectDriveUrl(visual.value)} className="w-full h-full object-cover" /> : visual.type === 'css' ? <div className="w-full h-full" style={{ background: visual.value }}></div> : <div className="w-full h-full bg-slate-200 flex items-center justify-center text-2xl">{item.mueble?.imagen || '📦'}</div>}
-                          </div>
-                          <div className="flex-1 pr-8 md:pr-12">
-                            <h3 className="text-sm md:text-xl font-bold text-[#36251B] uppercase tracking-widest">{item.mueble?.nombre || 'Mueble'} <span className="text-[#A0958A] font-medium text-xs md:text-sm">/ {item.config?.materialNombre || 'Std'}</span></h3>
-                            <div className="text-[10px] md:text-xs text-[#6B635A] font-semibold uppercase tracking-widest mt-2 md:mt-3 flex flex-wrap gap-x-2 gap-y-2 md:gap-x-3 items-center">
-                              <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">CANT: {item.config?.cantidad || 1}</span> <span className="text-[#E0D8CC] hidden md:inline">|</span>
-                              <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">MED: {item.config?.ancho || 0}x{item.config?.largo || 0}cm</span> <span className="text-[#E0D8CC] hidden md:inline">|</span>
-                              <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">ESP: {item.config?.espesorVisual || 'STD'}</span> <span className="text-[#E0D8CC] hidden md:inline">|</span>
-                              <span className="bg-[#F4F1EB] px-2 py-1 rounded-md text-[#36251B]">{item.config?.acabado || 'NATURAL'}</span>
-                            </div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <div className="text-xl md:text-3xl font-black text-[#1C2E20]">${new Intl.NumberFormat('es-AR').format(item.precio || 0)}</div>
-                          </div>
+                      <div key={item.id} className="border-b border-[#E0D8CC] pb-5 relative group flex gap-4 md:gap-6 items-center">
+                        <button onClick={() => setCarrito(prev => prev.filter(c => c.id !== item.id))} className="absolute top-0 right-0 text-[#9C948A] hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
+                        <div className="w-16 h-16 md:w-20 md:h-20 rounded-md overflow-hidden shrink-0 shadow-sm border border-[#F4F1EB]">
+                          {visual.type === 'img' ? <img src={getDirectDriveUrl(visual.value)} className="w-full h-full object-cover" /> : visual.type === 'css' ? <div className="w-full h-full" style={{ background: visual.value }}></div> : <div className="w-full h-full bg-slate-200 flex items-center justify-center text-2xl">{item.mueble?.imagen || '📦'}</div>}
+                        </div>
+                        <div className="flex-1 pr-6">
+                          <h3 className="text-base md:text-lg font-bold text-[#36251B] uppercase tracking-wider">{item.mueble?.nombre || 'Mueble'} <span className="text-[#8C7D70] font-normal">/ {item.config?.materialNombre || 'Std'}</span></h3>
+                          <p className="text-[10px] md:text-[11px] text-[#6B635A] font-semibold uppercase tracking-widest mt-1 leading-relaxed">
+                            CANTIDAD: {item.config?.cantidad || 1} <span className="text-[#D0C8BC] mx-1.5">|</span>
+                            MEDIDAS: {item.config?.ancho || 0} x {item.config?.largo || 0} cm <span className="text-[#D0C8BC] mx-1.5">|</span>
+                            {isPuertaP4 ? `UBICACIÓN: ${(item.config?.uso || 'INTERIOR').toUpperCase()}` : `ESPESOR: ${item.config?.tipoConstruccion === 'maciza' ? `${item.config?.espesorPulgadas}"` : (item.config?.espesorVisual || 'STD')}`} <span className="text-[#D0C8BC] mx-1.5">|</span>
+                            TERMINACIÓN: {item.config?.acabado || 'NATURAL'}
+                            {isMesaP4 && item.config?.tipoPatas && item.config.tipoPatas !== 'sin_patas' ? <><span className="text-[#D0C8BC] mx-1.5">|</span> PATAS: {item.config.tipoPatas.replace('_', ' ')}</> : ''}
+                            {isPuertaP4 && item.config?.marco ? <><span className="text-[#D0C8BC] mx-1.5">|</span> CON MARCO</> : ''}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-xl md:text-2xl font-semibold text-[#1C2E20]">${new Intl.NumberFormat('es-AR').format(item.precio || 0)}</div>
                         </div>
                       </div>
                     );
@@ -1514,27 +1490,54 @@ const App = () => {
                   {carrito.length === 0 && <div className="text-center py-20 text-[#6B635A] font-semibold text-sm uppercase tracking-widest">El presupuesto está vacío.</div>}
                 </div>
 
-                <div className="flex gap-4 mb-6">
+                <div className="flex gap-4 mb-6 max-w-2xl mx-auto">
                   <button onClick={() => setShowEnvio(!showEnvio)} className={`flex-1 py-3 rounded-xl border text-[10px] font-bold uppercase transition-all ${showEnvio ? 'bg-[#36251B] text-white border-[#36251B]' : 'bg-white border-[#E0D8CC] text-[#6B635A]'}`}>+ Envío</button>
                   <button onClick={() => setShowInstalacion(!showInstalacion)} className={`flex-1 py-3 rounded-xl border text-[10px] font-bold uppercase transition-all ${showInstalacion ? 'bg-[#36251B] text-white border-[#36251B]' : 'bg-white border-[#E0D8CC] text-[#6B635A]'}`}>+ Instalación</button>
                 </div>
 
                 {(showEnvio || showInstalacion) && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in bg-[#F4F1EB] p-4 rounded-xl mb-4 border border-[#E0D8CC]">
-                    {showEnvio && <div><label className="text-[10px] font-bold text-[#6B635A] uppercase mb-1.5 block">Monto Envío</label><div className="flex items-center bg-white border border-[#E0D8CC] rounded-xl overflow-hidden"><span className="pl-3 text-[#36251B] font-bold">$</span><input type="number" value={config.envio} onChange={e => setConfig({ ...config, envio: e.target.value })} className="w-full bg-transparent p-3 font-semibold text-[#1A1816] outline-none" placeholder="0" /></div></div>}
-                    {showInstalacion && <div><label className="text-[10px] font-bold text-[#6B635A] uppercase mb-1.5 block">Monto Instalación</label><div className="flex items-center bg-white border border-[#E0D8CC] rounded-xl overflow-hidden"><span className="pl-3 text-[#36251B] font-bold">$</span><input type="number" value={config.instalacion} onChange={e => setConfig({ ...config, instalacion: e.target.value })} className="w-full bg-transparent p-3 font-semibold text-[#1A1816] outline-none" placeholder="0" /></div></div>}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in bg-[#F4F1EB] p-4 rounded-xl mb-4 border border-[#E0D8CC] max-w-2xl mx-auto">
+                    {showEnvio && <div><label className="text-[10px] font-bold text-[#6B635A] uppercase mb-1.5 block">Monto Envío</label><div className="flex items-center bg-white border border-[#E0D8CC] rounded-xl overflow-hidden"><span className="pl-3 text-[#36251B] font-bold">$</span><input type="number" value={extras.envio} onChange={e => setExtras({ ...extras, envio: e.target.value })} className="w-full bg-transparent p-3 font-semibold text-[#1A1816] outline-none" placeholder="0" /></div></div>}
+                    {showInstalacion && <div><label className="text-[10px] font-bold text-[#6B635A] uppercase mb-1.5 block">Monto Instalación</label><div className="flex items-center bg-white border border-[#E0D8CC] rounded-xl overflow-hidden"><span className="pl-3 text-[#36251B] font-bold">$</span><input type="number" value={extras.instalacion} onChange={e => setExtras({ ...extras, instalacion: e.target.value })} className="w-full bg-transparent p-3 font-semibold text-[#1A1816] outline-none" placeholder="0" /></div></div>}
                   </div>
                 )}
 
-                <div className="bg-white border-y border-[#E0D8CC] py-6 flex justify-between items-center mt-6">
-                  <div className="text-xs md:text-sm uppercase font-bold tracking-widest text-[#6B635A]">Total General</div>
-                  <div className="text-3xl md:text-4xl font-black tracking-tight text-[#36251B]">${new Intl.NumberFormat('es-AR').format(carrito.reduce((a, b) => a + (b.precio || 0), 0) + (showEnvio ? Number(config?.envio) || 0 : 0) + (showInstalacion ? Number(config?.instalacion) || 0 : 0))}</div>
-                </div>
+                {(() => {
+                  const subtotal = carrito.reduce((a, b) => a + (b.precio || 0), 0);
+                  const costoEnvio = showEnvio ? Number(extras.envio) || 0 : 0;
+                  const costoInstalacion = showInstalacion ? Number(extras.instalacion) || 0 : 0;
+                  const totalFinal = subtotal + costoEnvio + costoInstalacion;
 
-                <div className="grid grid-cols-3 gap-3 mt-8">
-                  <button onClick={() => downloadPDF()} className="bg-white border border-[#E0D8CC] text-[#36251B] py-4 rounded-xl font-bold text-xs uppercase flex flex-col items-center justify-center gap-1 hover:bg-[#F4F1EB] transition-colors"><Download size={18} /> PDF</button>
-                  <button onClick={enviarWhatsapp} className="bg-[#25D366] text-white py-4 rounded-xl font-bold text-xs uppercase flex flex-col items-center justify-center gap-1 shadow-md hover:bg-[#1DA851] transition-colors"><MessageCircle size={18} /> Enviar</button>
-                  <button onClick={guardarPresupuestoInterno} className="bg-[#1C2E20] text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest flex flex-col items-center justify-center gap-1 shadow-md hover:bg-[#152418] transition-colors"><Save size={18} /> Guardar</button>
+                  return (
+                    <div className="mt-8 pt-6 border-t border-[#36251B] w-full max-w-xs ml-auto px-2">
+                      <div className="flex items-center justify-between text-[#6B635A] text-xs font-semibold uppercase tracking-wider mb-2">
+                        <span>Subtotal</span>
+                        <span>${new Intl.NumberFormat('es-AR').format(subtotal)}</span>
+                      </div>
+                      {showEnvio && (
+                        <div className="flex items-center justify-between text-[#6B635A] text-xs font-semibold uppercase tracking-wider mb-2">
+                          <span>Envío</span>
+                          <span>${new Intl.NumberFormat('es-AR').format(costoEnvio)}</span>
+                        </div>
+                      )}
+                      {showInstalacion && (
+                        <div className="flex items-center justify-between text-[#6B635A] text-xs font-semibold uppercase tracking-wider mb-2">
+                          <span>Instalación</span>
+                          <span>${new Intl.NumberFormat('es-AR').format(costoInstalacion)}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between text-[#36251B] text-base md:text-lg font-bold uppercase tracking-widest pt-3 border-t border-[#E0D8CC] mt-2">
+                        <span>Total</span>
+                        <span className="text-xl md:text-2xl">${new Intl.NumberFormat('es-AR').format(totalFinal)}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-10 max-w-2xl mx-auto">
+                  <button onClick={() => downloadPDF()} className="bg-white border border-[#E0D8CC] text-[#36251B] py-4 rounded-xl font-bold text-[10px] md:text-xs uppercase flex items-center justify-center gap-2 hover:bg-[#F4F1EB] transition-colors"><Download size={18} /> PDF</button>
+                  <button onClick={enviarWhatsapp} className="bg-[#25D366] text-white py-4 rounded-xl font-bold text-[10px] md:text-xs uppercase flex items-center justify-center gap-2 shadow-md hover:bg-[#1DA851] transition-colors"><MessageCircle size={18} /> ENVIAR</button>
+                  <button onClick={guardarPresupuestoInterno} className="bg-[#1C2E20] text-white py-4 rounded-xl font-bold text-[10px] md:text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-md hover:bg-[#152418] transition-colors"><Save size={18} /> GUARDAR</button>
                 </div>
               </div>
             )}
